@@ -51,7 +51,7 @@ def create_memory_checkpointer(memory_db_path: str | None = None) -> SqliteSaver
 
 checkpointer = create_memory_checkpointer(
     memory_db_path=None
-)  # TODO: Pending to implement to an specific file
+)  # LANGGRAPH HTTP RUNNER DOES NOT SUPPORT CUSTOM MEMORY CHECKPOINTING, USE BUILT-IN MEMORY
 
 
 # --------------------------
