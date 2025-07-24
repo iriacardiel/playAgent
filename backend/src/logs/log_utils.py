@@ -1,0 +1,39 @@
+import csv
+from langchain_core.messages import AIMessage
+from datetime import datetime
+from typing import Any
+
+def log_token_usage(ai_message: AIMessage, messages_list: list[Any]):
+    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    token_usage = {
+        "input_tokens": ai_message.usage_metadata.get("input_tokens", 0),
+        "output_tokens": ai_message.usage_metadata.get("output_tokens", 0),
+    }
+
+    file_path = "./src/logs/token_usage_log.csv"
+    
+    # Clear file if messages_list has length 1
+    if len(messages_list) == 1:
+        with open(file_path, mode='w', newline='', encoding='utf-8') as file:
+            writer = csv.writer(file)
+            writer.writerow(["timestamp", "input_tokens", "output_tokens", "total_tokens"])
+    
+    # Append new row
+    with open(file_path, mode='a', newline='', encoding='utf-8') as file:
+        writer = csv.writer(file)
+        total = token_usage["input_tokens"] + token_usage["output_tokens"]
+        writer.writerow([timestamp, token_usage["input_tokens"], token_usage["output_tokens"], total])
+        
+#from transformers import AutoTokenizer
+# def count_tokens(text: str):
+#     """
+#     Count the number of tokens in a given text using a tokenizer.
+#     """
+#     # Load the tokenizer
+#     tokenizer = AutoTokenizer.from_pretrained("openchat/openchat-3.5-0106")
+    
+#     # Encode the text and count tokens
+#     token_ids = tokenizer.encode(text, return_tensors="pt")
+    
+#     return len(token_ids[0])
+

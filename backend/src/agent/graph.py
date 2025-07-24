@@ -14,6 +14,7 @@ from agent.tools_and_schemas import (
     add_task
 )
 from config.settings import Settings
+from logs.log_utils import log_token_usage
 
 VERBOSE = bool(int(Settings.VERBOSE))
 
@@ -106,6 +107,9 @@ class Agent:
         # Call LLM
         ai_message = self.llm_with_tools.invoke(llm_input)
 
+        # Token count (through LangChain AIMessage)
+        log_token_usage(ai_message, messages_list)
+        
         return {"messages": [ai_message]}
 
     # --------------------------
