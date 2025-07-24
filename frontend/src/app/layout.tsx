@@ -33,9 +33,12 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <NuqsAdapter>{children}</NuqsAdapter>
+          <NuqsAdapter>{children}</NuqsAdapter> {/* page.tsx content is rendered here */}
         </ThemeProvider>
       </body>
     </html>
   );
 }
+
+// The RootLayout wraps all pages (React components with type React.ReactNode), including page.tsx, providing global structure, styling, and context providers.
+

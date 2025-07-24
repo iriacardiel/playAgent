@@ -1,4 +1,3 @@
-import { WTAAlternativesGrid } from "@/components/ui/wta-alternatives-grid";
 import { isAgentInboxInterruptSchema } from "@/lib/agent-inbox-interrupt";
 import { cn } from "@/lib/utils";
 import { useStreamContext } from "@/providers/Stream";
@@ -15,10 +14,9 @@ import { getContentString } from "../utils";
 import { GenericInterruptView } from "./generic-interrupt";
 import { BranchSwitcher, CommandBar } from "./shared";
 import { ToolCalls } from "./tool-calls";
-import { isWTAInterruptSchema, WTAInterruptView } from "./wta-interrupt";
 
 const clientComponents = {
-  wta_alternatives: (props: any) => (WTAAlternativesGrid(props.alternatives)),
+  /* Insert custom client components*/
 }
 
 function CustomComponent({
@@ -90,12 +88,8 @@ function Interrupt({
     (isLastMessage || hasNoAIOrToolMessages)
   ) {
     return <ThreadView interrupt={interruptValue} />;
-  } else if (
-    isWTAInterruptSchema(interruptValue) &&
-    (isLastMessage || hasNoAIOrToolMessages)
-  ) {
-    return <WTAInterruptView interrupt={interruptValue} />;
-  } else if (
+  } 
+  else if (
     interruptValue && isLastMessage
   ) {
     return <GenericInterruptView interrupt={interruptValue} />;
