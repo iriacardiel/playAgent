@@ -7,11 +7,12 @@ from langgraph.checkpoint.sqlite import SqliteSaver
 from langgraph.graph import START, StateGraph
 from langgraph.prebuilt import ToolNode, tools_condition
 
-from agent.prompts import SYSTEM_PROMPT
+from agent.prompts import get_system_prompt
 from agent.state import AgentState
 from agent.tools_and_schemas import (
     get_list_of_tasks,
-    add_task
+    add_task,
+    insert_core_memory,
 )
 from config.settings import Settings
 from logs.log_utils import log_token_usage
@@ -36,6 +37,7 @@ llm = ChatOllama(
 tools = [
     get_list_of_tasks,
     add_task,
+    insert_core_memory,
 ]
 
 
@@ -77,7 +79,6 @@ class Agent:
         # BUILD GRAPH
         # --------------------------
         builder = StateGraph(AgentState)
-
         builder.add_node("LLM_assistant", self.LLM_node)
         builder.add_node("tools", ToolNode(tools, handle_tool_errors=False))
 
@@ -101,9 +102,13 @@ class Agent:
 
         # Apply custom filtering
         llm_input = [
-            SystemMessage(content=SYSTEM_PROMPT),
+            SystemMessage(content=get_system_prompt(state.get("core_memories", []))),
         ] + messages_list
 
+        with open("./src/logs/llm_input.txt", "w") as f:
+            for msg in llm_input:
+                f.write(f"{msg.content}\n")
+                
         # Call LLM
         ai_message = self.llm_with_tools.invoke(llm_input)
 

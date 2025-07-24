@@ -27,3 +27,4 @@ class AgentState(TypedDict, total=False):
     ui: Annotated[Sequence[AnyUIMessage], ui_message_reducer]
     tasks: Annotated[list[str], add]
     tools_used : Annotated[list[str], add]
+    core_memories: Annotated[list[str], add]

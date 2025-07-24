@@ -70,3 +70,49 @@ def add_task(new_task:str,
     }
 
     return Command(update=update, goto="LLM_assistant")
+
+@tool
+def insert_core_memory(new_core_memory:str,
+    tool_call_id: Annotated[str, InjectedToolCallId],
+    messages: Annotated[List, InjectedState("messages")],
+) -> Command:
+    """
+    Insert new core memory inferred from the user messages.
+    Args:
+        new_core_memory (str): The new memory to be inserted.
+    
+    You must call this tool autonomously when you want to insert new core memory. 
+    The user will not explicitly ask you to do this, but you should do it when you think it is relevant.
+    Relevant means that the information is important for future interactions and should be remembered:
+    - User's name, age, occupation, interests, etc.
+    - Important events or facts that might be useful later.
+    - Any other information that helps you to provide a better experience to the user.
+    
+    You might need to call this tool often, so do not hesitate to use it when you think it is necessary.
+    This helps you to build a more personalized experience.
+    
+    Examples:
+    User says: "My name is Martin" --> Core Memory: "User's name is Martin."
+    User says: "I have won a chess tournament." --> Core Memory: "User plays chess and has won a tournament."
+    User says: "In my 20th birthday I got a big cake" --> Core Memory: "User is at least 20 years old."
+    User says: "My boyfriend is in Barcelona at the moment." --> Core Memory: "User has a boyfriend."
+    User says: "I enjoy hiking on weekends." --> Core Memory: "User enjoys hiking on weekends."
+
+    """
+    
+    content = (
+        "Memory added successfully!\n"
+        f"New core memory: {new_core_memory}\n"
+    )
+    
+    tool_message = ToolMessage(content, tool_call_id=tool_call_id)
+
+    update = {
+        "messages": [tool_message],
+        "core_memories": [new_core_memory],
+        "tools_used": ["insert_core_memory"],
+    }
+
+    return Command(update=update, goto="LLM_assistant")
+
+
