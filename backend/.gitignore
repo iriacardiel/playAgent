@@ -167,3 +167,6 @@ cython_debug/
 *.db-wal
 *.db
 *.csv
+
+src/logs/*.txt
+src/logs/*.csv

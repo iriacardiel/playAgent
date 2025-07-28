@@ -12,10 +12,10 @@ from agent.state import AgentState
 from agent.tools_and_schemas import (
     get_list_of_tasks,
     add_task,
-    insert_core_memory,
 )
 from config.settings import Settings
 from logs.log_utils import log_token_usage
+from termcolor import colored
 
 VERBOSE = bool(int(Settings.VERBOSE))
 
@@ -37,7 +37,6 @@ llm = ChatOllama(
 tools = [
     get_list_of_tasks,
     add_task,
-    insert_core_memory,
 ]
 
 
@@ -79,10 +78,12 @@ class Agent:
         # BUILD GRAPH
         # --------------------------
         builder = StateGraph(AgentState)
+        builder.add_node("memory_manager", self.memory_manager)
         builder.add_node("LLM_assistant", self.LLM_node)
         builder.add_node("tools", ToolNode(tools, handle_tool_errors=False))
 
-        builder.add_edge(START, "LLM_assistant")
+        builder.add_edge(START, "memory_manager")
+        builder.add_edge("memory_manager", "LLM_assistant")
         builder.add_conditional_edges(
             "LLM_assistant", tools_condition, path_map=["tools", "__end__"]
         )
@@ -95,10 +96,39 @@ class Agent:
     # --------------------------
     # NODES
     # --------------------------
+
+    # Memory Manager Node
+    def memory_manager(self, state: AgentState):
+        """Memory Manager Node - Handles memory management."""
+        messages_list = self.filtermessages(state["messages"])
+
+        # Apply custom filtering
+        llm_input = [
+            SystemMessage(content=get_system_prompt(state.get("core_memories", []), messages_list, cdu="memory")),
+        ]
+        
+        print(colored(llm_input, "blue"))
+        
+
+        with open("./src/logs/llm_input_memories.txt", "w") as f:
+            for msg in llm_input:
+                f.write(f"{msg.content}\n")
+                
+        # Call LLM
+        ai_message = self.llm.invoke(llm_input)
+
+        # Token count (through LangChain AIMessage)
+        log_token_usage(ai_message, messages_list)
+        
+        # Extract new core memory from the LLM response
+        new_core_memory = ai_message.content.strip()
+        print(colored(f"New Core Memory: {new_core_memory}", "green"))
+        return {"core_memories": [new_core_memory]}
+    
     # LLM Assistant Node
     def LLM_node(self, state: AgentState):
         """LLM Assistant Node - Handles LLM interactions."""
-        messages_list = self.filtermessages(state["messages"])
+        messages_list = state["messages"]
 
         # Apply custom filtering
         llm_input = [

@@ -22,16 +22,17 @@ VERBOSE = bool(int(Settings.VERBOSE))
 @tool
 def get_list_of_tasks(
     tool_call_id: Annotated[str, InjectedToolCallId],
-    messages: Annotated[List, InjectedState("messages")],
+    tasks: Annotated[List, InjectedState("tasks")],
+
 ) -> Command:
     """
     Get the list of tasks from the state and present them to the user.
+    If list is, empty, inform the user that there are no tasks yet.
     """
     
-    tasks = ["write essay", "buy groceries"]
     content = (
         "Tasks:\n"
-        "\n".join(f"- {task}" for task in tasks)
+        "\n".join(f"- {task}" for task in tasks if task is not None)
     )
     
     tool_message = ToolMessage(content, tool_call_id=tool_call_id)
@@ -47,7 +48,6 @@ def get_list_of_tasks(
 @tool
 def add_task(new_task:str,
     tool_call_id: Annotated[str, InjectedToolCallId],
-    messages: Annotated[List, InjectedState("messages")],
 ) -> Command:
     """
     Add a task to the list of tasks and present the updated list to the user.
@@ -71,48 +71,51 @@ def add_task(new_task:str,
 
     return Command(update=update, goto="LLM_assistant")
 
-@tool
-def insert_core_memory(new_core_memory:str,
-    tool_call_id: Annotated[str, InjectedToolCallId],
-    messages: Annotated[List, InjectedState("messages")],
-) -> Command:
-    """
-    Insert new core memory inferred from the user messages.
-    Args:
-        new_core_memory (str): The new memory to be inserted.
-    
-    You must call this tool autonomously when you want to insert new core memory. 
-    The user will not explicitly ask you to do this, but you should do it when you think it is relevant.
-    Relevant means that the information is important for future interactions and should be remembered:
-    - User's name, age, occupation, interests, etc.
-    - Important events or facts that might be useful later.
-    - Any other information that helps you to provide a better experience to the user.
-    
-    You might need to call this tool often, so do not hesitate to use it when you think it is necessary.
-    This helps you to build a more personalized experience.
-    
-    Examples:
-    User says: "My name is Martin" --> Core Memory: "User's name is Martin."
-    User says: "I have won a chess tournament." --> Core Memory: "User plays chess and has won a tournament."
-    User says: "In my 20th birthday I got a big cake" --> Core Memory: "User is at least 20 years old."
-    User says: "My boyfriend is in Barcelona at the moment." --> Core Memory: "User has a boyfriend."
-    User says: "I enjoy hiking on weekends." --> Core Memory: "User enjoys hiking on weekends."
+# @tool
+# def insert_core_memory(new_core_memory:str,
+#     tool_call_id: Annotated[str, InjectedToolCallId],
+#     messages: Annotated[List, InjectedState("messages")],
+# ) -> Command:
+#     """
+#     Insert new core memory inferred from the user messages.
+#     Args:
+#         new_core_memory (str): The new memory to be inserted.
 
-    """
+#     You must call this tool autonomously, when you want to insert new memory into the Core Memories section.
+#     Extract any relevant information from each user message and store it as a core memory.
+#     The user will not explicitly ask you to do this.
     
-    content = (
-        "Memory added successfully!\n"
-        f"New core memory: {new_core_memory}\n"
-    )
+#     Relevant means that the information is important for future interactions and should be remembered:
+#     - User information: name, age, occupation, etc.
+#     - User interests: hobbies, what they like to do, like interests, hobbies, etc.
+#     - User preferences: what they like or dislike, favorite things, etc.
+#     - Any other information that helps you to provide a better experience to the user in the future.
     
-    tool_message = ToolMessage(content, tool_call_id=tool_call_id)
+#     You should use this tool frequently, everytime the user says something relevant.
+#     Almost all interactions with the user will provide you with new information that can be stored as core memory.
+#     You might need to call this tool often, so do not hesitate to use it when you think it is necessary.
+#     This helps you to build a more personalized experience.
+    
+#     Examples of when to use the tool and how to format the new memory:
+#     User says: "My name is Martin" --> New Memory: "User's name is Martin."
+#     User says: "I have won a chess tournament." --> New Memory: "User plays chess."
+#     User says: "In my 20th birthday I got a big cake" --> New Memory: "User is at least 20 years old."
 
-    update = {
-        "messages": [tool_message],
-        "core_memories": [new_core_memory],
-        "tools_used": ["insert_core_memory"],
-    }
+#     """
+    
+#     content = (
+#         "Memory added successfully!\n"
+#         f"New core memory: {new_core_memory}\n"
+#     )
+    
+#     tool_message = ToolMessage(content, tool_call_id=tool_call_id)
 
-    return Command(update=update, goto="LLM_assistant")
+#     update = {
+#         "messages": [tool_message],
+#         "core_memories": [new_core_memory],
+#         "tools_used": ["insert_core_memory"],
+#     }
+
+#     return Command(update=update, goto="LLM_assistant")
 
 
