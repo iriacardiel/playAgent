@@ -116,9 +116,6 @@ class Agent:
                 
         # Call LLM
         ai_message = self.llm.invoke(llm_input)
-
-        # Token count (through LangChain AIMessage)
-        log_token_usage(ai_message, messages_list)
         
         # Extract new core memory from the LLM response
         new_core_memory = ai_message.content.strip()
@@ -128,7 +125,7 @@ class Agent:
     # LLM Assistant Node
     def LLM_node(self, state: AgentState):
         """LLM Assistant Node - Handles LLM interactions."""
-        messages_list = state["messages"]
+        messages_list = self.filtermessages(state["messages"])
 
         # Apply custom filtering
         llm_input = [
@@ -155,12 +152,12 @@ class Agent:
 
         # TODO: Pending to implement
         def is_relevant_message(msg: AnyMessage, index: int, totalmessages: int):
-            # Always keep last 3 messages
-            if index >= totalmessages - 3:
+            # Always keep last 10 messages
+            if index >= totalmessages - 10:
                 return True
 
             # Keep all other messages
-            return True
+            return False
 
         # Apply custom filtering
         filteredmessages = [

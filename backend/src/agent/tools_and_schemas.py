@@ -29,17 +29,18 @@ def get_list_of_tasks(
     Get the list of tasks from the state and present them to the user.
     If list is, empty, inform the user that there are no tasks yet.
     """
-    
-    content = (
-        "Tasks:\n"
-        "\n".join(f"- {task}" for task in tasks if task is not None)
-    )
+    if tasks is None or len(tasks) == 0:
+        content = "There are no tasks yet."
+    else:
+        content = (
+            "Tasks:\n"
+            "\n".join(f"- {task}" for task in tasks if task is not None)
+        )
     
     tool_message = ToolMessage(content, tool_call_id=tool_call_id)
 
     update = {
         "messages": [tool_message],
-        "tasks": tasks,
         "tools_used": ["get_list_of_tasks"],
     }
 
@@ -57,8 +58,7 @@ def add_task(new_task:str,
     """
     
     content = (
-        "Task added successfully!\n"
-        f"New task: {new_task}\n"
+        f"Task added successfully! '{new_task}'"
     )
     
     tool_message = ToolMessage(content, tool_call_id=tool_call_id)
