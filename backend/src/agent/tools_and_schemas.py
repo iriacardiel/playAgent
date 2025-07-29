@@ -99,8 +99,8 @@ def save_core_memory(new_core_memory:str,
     - Any other information that helps you to provide a better experience to the user in the future.
 
     Examples:
-    - If the user says "My name is Iria", call:
-    new_core_memory="The user's name is Iria."
+    - If the user says "My name is Martha", call:
+    new_core_memory="The user's name is Martha."
     - If the user says "I'm a physics student", call this tool.:
     new_core_memory="The user is a physics student."
     - If the user says "My boyfriend plays chess", call this tool.:
