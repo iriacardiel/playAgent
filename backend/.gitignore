@@ -170,3 +170,7 @@ cython_debug/
 
 src/logs/*.txt
 src/logs/*.csv
+
+src/long-term-memory/vector_memory_chromadb/
+src/long-term-memory/vector_memory_faiss/
+src/long-term-memory/structured_memory.db
