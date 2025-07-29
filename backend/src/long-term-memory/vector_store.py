@@ -7,6 +7,7 @@ First run:
 """
 
 from datetime import datetime
+import time
 import uuid
 import faiss
 import chromadb
@@ -56,7 +57,7 @@ class VectorMemoryStore:
         vec = np.array(get_embedding_ollama(content), dtype="float32")
         #print("Embedding length:", len(vec))
         unique_id = str(uuid.uuid4())
-        cprint(f"Saved document with ID: {unique_id}.", "yellow")
+        cprint(f"Saved document with ID: {unique_id}. Content: {content}", "yellow")
 
         if self.vector_store == "chromadb":
             self.collection.add(
@@ -76,7 +77,7 @@ class VectorMemoryStore:
 
     def search(self, query:str, k:int=3, include_tags:list=[]):
         # generate an embedding for the input and retrieve the most relevant doc
-        cprint(f"Searching for query: {query}", "yellow")
+        cprint(f"Vector search for query: {query}", "yellow")
 
         q_vec = np.array(get_embedding_ollama(query), dtype="float32")
 
@@ -95,31 +96,54 @@ class VectorMemoryStore:
                 n_results=k,
                 where=None if not filters else filters,
             )
-       
-            
-            D, I = results['distances'][0], results['ids'][0]
 
-            top_results = results['documents'][0] # list of documents
+
+            distances, unique_ids, metadatas = results['distances'][0], results['ids'][0], results['metadatas'][0]
+            documents = results['documents'][0] # list of documents
             
         elif self.vector_store == "faiss":
             
             # Query the index
-            D, I = self.index.search(np.array([q_vec]), k)
-            top_results = [
+            distances, indexes = self.index.search(np.array([q_vec]), k)
+            documents = [
                 self.memories[i]['content']
-                for i in I[0]
+                for i in indexes[0]
+                if i < len(self.memories)
+            ]
+            
+            unique_ids = [
+                self.memories[i]['id']
+                for i in indexes[0]
+                if i < len(self.memories)
+            ]
+         
+            metadatas = [
+                self.memories[i]['metadata']
+                for i in indexes[0]
                 if i < len(self.memories)
             ]
          
             if include_tags:
                 warning = "Filtering by tags is not supported in FAISS. Returning all results."
                 cprint(warning, "red")
-                
-        print("Distances:", D)
-        print("Doc Ids:", I)
-        print(f"Documents ({len(top_results)}):", top_results)
 
-        return top_results
+        distances = np.array(distances).squeeze()  # Remove extra dimension
+        recencies = np.array([], dtype=float)
+        importances = np.array([], dtype=float)
+        for meta in metadatas:
+            recencies = np.append(recencies, (datetime.now() - datetime.strptime(meta.get("created_at", "1970-01-01 00:00:00"), "%Y-%m-%d %H:%M:%S")).total_seconds())
+            importances = np.append(importances, float(meta.get("importance", 1)))  # Default importance to 1 if not specified
+
+        cosine_similarities = 1 - distances  # Convert distances to cosine similarities
+        cprint(f"Vector search results (ordered by distance):", "yellow")
+        print("Distances:", distances)
+        print("Cosine Similarities:", cosine_similarities)
+        print("Recencies :", recencies)
+        print("Importances:", importances)
+        print("Doc Ids:", unique_ids)
+        print(f"Documents ({len(documents)}):", documents)
+
+        return documents, distances, cosine_similarities, recencies, importances
 
     def reset(self):
         if self.vector_store == "chromadb":
@@ -160,32 +184,47 @@ class VectorMemoryStore:
                 print(f"[{i}] Content: {doc}")
                 print(f"     Metadata: {meta}")
                 print("-" * 40)
+                
+        print(f"Total documents in vector store: {self.count_all()}")
+                
+    def count_all(self):
+
+        if self.vector_store == "faiss":
+            return len(self.memories)
+
+        elif self.vector_store == "chromadb":
+            return len(self.collection.peek()["ids"])
             
 
 # Initialize Vector Memory Store
 vector_store = VectorMemoryStore()
 
-# Step 1: Save documents
+# Step 1: Save (store)
+# =====================
+
 documents = [
-  {"content": "Llamas are members of the camelid family meaning they're pretty closely related to vicuñas and camels", 
-   "metadata": {"tags": "llamas", "importance": "5"}},
-  {"content": "Llamas were first domesticated and used as pack animals 4,000 to 5,000 years ago in the Peruvian highlands", 
-   "metadata": {"tags": "llamas", "importance": "5"}},
-  {"content": "Llamas can grow as much as 6 feet tall though the average llama between 5 feet 6 inches and 5 feet 9 inches tall", 
-   "metadata": {"tags": "llamas", "importance": "5"}},
-  {"content": "Llamas weigh between 280 and 450 pounds and can carry 25 to 30 percent of their body weight", 
-   "metadata": {"tags": "llamas", "importance": "5"}},
-  {"content": "Llamas are vegetarians and have very efficient digestive systems", 
-   "metadata": {"tags": "llamas", "importance": "5"}},
-  {"content": "Llamas live to be about 20 years old, though some only live for 15 years and others live to be 30 years old", 
-   "metadata": {"tags": "llamas", "importance": "5"}},
-  {"content": "Iria's favorite animal is the cat.", 
-   "metadata": {"tags": "cats", "importance": "5"}},
-  {"content": "Turtles are green.", 
-   "metadata": {"tags": "turtles", "importance": "5"}},
+  {"content": "Iria loves food.",
+   "metadata": {"tags": "preferences", 
+                "importance": "5"}},
+  {"content": "Iria went to the park on Monday.",
+   "metadata": {"tags": "activities", 
+                "importance": "5"}},
+  {"content": "Iria dislikes football.",
+   "metadata": {"tags": "preferences",
+                "importance": "5"}},
+  {"content": "Iria is a software engineer and works with AI.",
+   "metadata": {"tags": "occupation", 
+                "importance": "5"}},
+  {"content": "Iria had a cat.",
+   "metadata": {"tags": "animals", 
+                "importance": "5"}},
+  {"content": "Iria has a dog.",
+   "metadata": {"tags": "animals", 
+                "importance": "5"}},
 ]
 
 for i, d in enumerate(documents):
+  time.sleep(2)  # To ensure different timestamps
   vector_store.save(
     content=d["content"],
     metadata={**d["metadata"], "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
@@ -193,13 +232,48 @@ for i, d in enumerate(documents):
   
 vector_store.show_all()
 
-# Step 2: Search (retrieve)
-query = "What is the weight of a llama?"
-results = vector_store.search(query, k=3, include_tags=["turtles"])
 
+# Step 2: Search (retrieve)
+# =========================
+query = "What animal does Iria have?"
+
+# Vector search
+contents, distances, cosine_similarities, recencies, importances = vector_store.search(query, k=vector_store.count_all(), include_tags=[])
+
+# Calculate scores based on importance, recency, and similarity
+cprint("\nContents reordered by SCORE: alpha_importance*importance + alpha_recency*0.995**recency + alpha_similarity*cosine_similarity", "yellow")
+alpha_importance = 1
+alpha_recency = 1
+alpha_similarity = 1
+exp_recency = 0.995**recencies
+scores = alpha_importance*importances + alpha_recency*exp_recency + alpha_similarity*cosine_similarities
+
+# Sort documents by score
+sorted_indices = np.argsort(scores)[::-1]  # Sort in descending order
+sorted_contents = [contents[i] for i in sorted_indices]
+sorted_distances = [distances[i] for i in sorted_indices]
+sorted_cosine_similarities = [cosine_similarities[i] for i in sorted_indices]
+sorted_recencies = [recencies[i] for i in sorted_indices]
+sorted_exp_recency = [exp_recency[i] for i in sorted_indices]
+sorted_importances = [importances[i] for i in sorted_indices]
+
+cprint(f"alpha_importance = {alpha_importance} | alpha_recency = {alpha_recency} | alpha_similarity = {alpha_similarity}", "yellow")
+for i, content in enumerate(sorted_contents):
+    print(f"\n[{i}] Content: {content}")
+    print(f"     Distance: {sorted_distances[i]}")
+    print(f"     Cosine Similarity: {sorted_cosine_similarities[i]}")
+    print(f"     Recency: {sorted_recencies[i]}")
+    print(f"     Exp Recency: {sorted_exp_recency[i]}")
+    print(f"     Importance: {sorted_importances[i]}")
+    print(f"     SCORE: {scores[sorted_indices[i]]}")
+    print("-" * 40)
+    
+    
 # Step 3: Generate
+# ================
+top_score = 3
 # # generate a response combining the prompt and data we retrieved in step 2
-generation_prompt = f"Using this data: {results}. Respond to this prompt: {query}"
+generation_prompt = f"Using this data: {sorted_contents[:top_score]}. Respond to this prompt: {query}"
 
 output = ollama.generate(
   model="mistral-small3.2:24b",
