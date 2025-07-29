@@ -87,26 +87,25 @@ def save_core_memory(new_core_memory:str,
     You might need to call this tool often, so do not hesitate to use it when you think it is necessary.
     This helps you to build a more personalized experience.
 
-    Relevant information includes, but is not limited to:
-    
-    - User information: name, age, occupation, etc.
-    - User interests: hobbies, what they like to do, like interests, hobbies, etc.
-    - User preferences: what they like or dislike, favorite things, etc.
-    - User future plans: what they want to do in the future, goals, etc.
-    - Any other information that helps you to provide a better experience to the user in the future.
-    
-    
     ### When to Call `save_core_memory`
     You must call `save_core_memory` when the user shares information such as:
     - Their name, age, location, or personal details
     - Interests, preferences, or background
     - Current activities, goals, or lifestyle choices
+    - User information: name, age, occupation, etc.
+    - User interests: hobbies, what they like to do, like interests, hobbies, etc.
+    - User preferences: what they like or dislike, favorite things, etc.
+    - User future plans: what they want to do in the future, goals, etc.
+    - Any other information that helps you to provide a better experience to the user in the future.
 
     Examples:
     - If the user says "My name is Iria", call:
     new_core_memory="The user's name is Iria."
     - If the user says "I'm a physics student", call this tool.:
     new_core_memory="The user is a physics student."
+    - If the user says "My boyfriend plays chess", call this tool.:
+    new_core_memory="The user has a boyfriend."
+
     """
     
     content = (
