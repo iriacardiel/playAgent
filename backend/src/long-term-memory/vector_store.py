@@ -203,22 +203,22 @@ vector_store = VectorMemoryStore()
 # =====================
 
 documents = [
-  {"content": "Iria loves food.",
+  {"content": "User loves food.",
    "metadata": {"tags": "preferences", 
                 "importance": "5"}},
-  {"content": "Iria went to the park on Monday.",
+  {"content": "User went to the park on Monday.",
    "metadata": {"tags": "activities", 
                 "importance": "5"}},
-  {"content": "Iria dislikes football.",
+  {"content": "User dislikes football.",
    "metadata": {"tags": "preferences",
                 "importance": "5"}},
-  {"content": "Iria is a software engineer and works with AI.",
+  {"content": "User is a software engineer and works with AI.",
    "metadata": {"tags": "occupation", 
                 "importance": "5"}},
-  {"content": "Iria had a cat.",
+  {"content": "User had a cat.",
    "metadata": {"tags": "animals", 
                 "importance": "5"}},
-  {"content": "Iria has a dog.",
+  {"content": "User has a dog.",
    "metadata": {"tags": "animals", 
                 "importance": "5"}},
 ]
@@ -235,13 +235,13 @@ vector_store.show_all()
 
 # Step 2: Search (retrieve)
 # =========================
-query = "What animal does Iria have?"
+query = "What animal does User have?"
 
 # Vector search
 contents, distances, cosine_similarities, recencies, importances = vector_store.search(query, k=vector_store.count_all(), include_tags=[])
 
 # Calculate scores based on importance, recency, and similarity
-cprint("\nContents reordered by SCORE: alpha_importance*importance + alpha_recency*0.995**recency + alpha_similarity*cosine_similarity", "yellow")
+cprint("\nContents reordered by SCORE:\nalpha_importance*importance + alpha_recency*0.995**recency + alpha_similarity*cosine_similarity", "yellow")
 alpha_importance = 1
 alpha_recency = 1
 alpha_similarity = 1
@@ -273,7 +273,7 @@ for i, content in enumerate(sorted_contents):
 # ================
 top_score = 3
 # # generate a response combining the prompt and data we retrieved in step 2
-generation_prompt = f"Using this data: {sorted_contents[:top_score]}. Respond to this prompt: {query}"
+generation_prompt = f"Using this data:\n{sorted_contents[:top_score]}.\nRespond to this prompt:\n{query}"
 
 output = ollama.generate(
   model="mistral-small3.2:24b",
