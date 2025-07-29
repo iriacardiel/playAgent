@@ -71,51 +71,58 @@ def add_task(new_task:str,
 
     return Command(update=update, goto="LLM_assistant")
 
-# @tool
-# def insert_core_memory(new_core_memory:str,
-#     tool_call_id: Annotated[str, InjectedToolCallId],
-#     messages: Annotated[List, InjectedState("messages")],
-# ) -> Command:
-#     """
-#     Insert new core memory inferred from the user messages.
-#     Args:
-#         new_core_memory (str): The new memory to be inserted.
+@tool
+def save_core_memory(new_core_memory:str,
+    tool_call_id: Annotated[str, InjectedToolCallId],
+) -> Command:
+    """
+    Save new memory or insight inferred from the user messages into the Core Memories section.
+    Args:
+        new_core_memory (str): The new memory to be saved.
 
-#     You must call this tool autonomously, when you want to insert new memory into the Core Memories section.
-#     Extract any relevant information from each user message and store it as a core memory.
-#     The user will not explicitly ask you to do this.
-    
-#     Relevant means that the information is important for future interactions and should be remembered:
-#     - User information: name, age, occupation, etc.
-#     - User interests: hobbies, what they like to do, like interests, hobbies, etc.
-#     - User preferences: what they like or dislike, favorite things, etc.
-#     - Any other information that helps you to provide a better experience to the user in the future.
-    
-#     You should use this tool frequently, everytime the user says something relevant.
-#     Almost all interactions with the user will provide you with new information that can be stored as core memory.
-#     You might need to call this tool often, so do not hesitate to use it when you think it is necessary.
-#     This helps you to build a more personalized experience.
-    
-#     Examples of when to use the tool and how to format the new memory:
-#     User says: "My name is Martin" --> New Memory: "User's name is Martin."
-#     User says: "I have won a chess tournament." --> New Memory: "User plays chess."
-#     User says: "In my 20th birthday I got a big cake" --> New Memory: "User is at least 20 years old."
+    Call this tool autonomously, when you want to save new memory into the Core Memories section. The user will not explicitly ask you to do this.
+    Extract any relevant information from each user message and save it as a core memory.
+    You should use this tool frequently, everytime the user says something relevant.
+    Almost all interactions with the user will provide you with new information that can be stored as core memory.
+    You might need to call this tool often, so do not hesitate to use it when you think it is necessary.
+    This helps you to build a more personalized experience.
 
-#     """
+    Relevant information includes, but is not limited to:
     
-#     content = (
-#         "Memory added successfully!\n"
-#         f"New core memory: {new_core_memory}\n"
-#     )
+    - User information: name, age, occupation, etc.
+    - User interests: hobbies, what they like to do, like interests, hobbies, etc.
+    - User preferences: what they like or dislike, favorite things, etc.
+    - User future plans: what they want to do in the future, goals, etc.
+    - Any other information that helps you to provide a better experience to the user in the future.
     
-#     tool_message = ToolMessage(content, tool_call_id=tool_call_id)
+    
+    ### When to Call `save_core_memory`
+    You must call `save_core_memory` when the user shares information such as:
+    - Their name, age, location, or personal details
+    - Interests, preferences, or background
+    - Current activities, goals, or lifestyle choices
 
-#     update = {
-#         "messages": [tool_message],
-#         "core_memories": [new_core_memory],
-#         "tools_used": ["insert_core_memory"],
-#     }
+    Examples:
+    - If the user says "My name is Iria", call:
+    new_core_memory="The user's name is Iria."
+    - If the user says "I'm a physics student", call this tool.:
+    new_core_memory="The user is a physics student."
+    """
+    
+    content = (
+        f"New core memory added successfully: {new_core_memory}"
+    )
+    
+    print(colored(f"New Core Memory: {new_core_memory}", "green"))
+    
+    tool_message = ToolMessage(content, tool_call_id=tool_call_id)
 
-#     return Command(update=update, goto="LLM_assistant")
+    update = {
+        "messages": [tool_message],
+        "core_memories": [new_core_memory],
+        "tools_used": ["save_core_memory"],
+    }
+
+    return Command(update=update, goto="LLM_assistant")
 
 

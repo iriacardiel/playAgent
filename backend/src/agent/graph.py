@@ -1,7 +1,7 @@
 import sqlite3
 
 from langchain_core.language_models.chat_models import BaseChatModel
-from langchain_core.messages import AnyMessage, SystemMessage
+from langchain_core.messages import AnyMessage, SystemMessage, AIMessage, HumanMessage
 from langchain_ollama import ChatOllama
 from langgraph.checkpoint.sqlite import SqliteSaver
 from langgraph.graph import START, StateGraph
@@ -12,6 +12,7 @@ from agent.state import AgentState
 from agent.tools_and_schemas import (
     get_list_of_tasks,
     add_task,
+    save_core_memory,
 )
 from config.settings import Settings
 from logs.log_utils import log_token_usage
@@ -19,25 +20,6 @@ from termcolor import colored
 
 VERBOSE = bool(int(Settings.VERBOSE))
 
-
-# --------------------------
-# LLM
-# --------------------------
-llm = ChatOllama(
-    model=Settings.MODEL_NAME,
-    temperature=0,
-    num_ctx=16000,
-    n_seq_max=1,
-    extract_reasoning=False,
-)
-
-# --------------------------
-# TOOLS
-# --------------------------
-tools = [
-    get_list_of_tasks,
-    add_task,
-]
 
 
 # --------------------------
@@ -57,7 +39,7 @@ checkpointer = create_memory_checkpointer(
 
 
 # --------------------------
-#  AGENT
+#  AGENT (SELF MANAGED LLM)
 # --------------------------
 class Agent:
     def __init__(
@@ -66,6 +48,96 @@ class Agent:
         """Initialize the agent with an LLM and tools."""
         # Store the LLM instance
         self.llm = llm
+        self.tools = tools
+
+        self.checkpointer = checkpointer
+
+        # Bind the LLM with tools
+        self.llm_with_tools = llm.bind_tools(tools)
+
+    def build_graph(self):
+        """Create the agent graph."""
+        # --------------------------
+        # BUILD GRAPH
+        # --------------------------
+        builder = StateGraph(AgentState)
+        builder.add_node("LLM_assistant", self.LLM_node)
+        builder.add_node("tools", ToolNode(self.tools, handle_tool_errors=False))
+
+        builder.add_edge(START, "LLM_assistant")
+        builder.add_conditional_edges(
+            "LLM_assistant", tools_condition, path_map=["tools", "__end__"]
+        )
+
+        # --------------------------
+        # COMPILE GRAPH
+        # --------------------------
+        return builder.compile(checkpointer=self.checkpointer, debug=False)
+
+    # --------------------------
+    # NODES
+    # --------------------------
+    
+    # LLM Assistant Node
+    def LLM_node(self, state: AgentState):
+        """LLM Assistant Node - Handles LLM interactions."""
+        messages_list = self.filtermessages(state["messages"])
+
+        # Apply custom filtering
+        llm_input = [
+            SystemMessage(content=get_system_prompt(state.get("core_memories", []), cdu = "main")),
+        ] + messages_list
+
+        with open("./src/logs/llm_input.txt", "w") as f:
+            f.write("Empty" if not llm_input else "\n" + "\n".join(
+                f"{'DORI' if isinstance(m, AIMessage) else 'User' if isinstance(m, HumanMessage) else 'System' if isinstance(m, SystemMessage) else 'Tool'} - {m.content}"
+                for m in llm_input
+            ))
+                
+        # Call LLM
+        ai_message = self.llm_with_tools.invoke(llm_input)
+
+        # Token count (through LangChain AIMessage)
+        log_token_usage(ai_message, messages_list)
+        
+        return {"messages": [ai_message]}
+
+    # --------------------------
+    # AGENT UTILS
+    # --------------------------
+    def filtermessages(self, allmessages: list):
+        """Filter messages to keep only relevant ones."""
+
+        # TODO: Pending to implement
+        def is_relevant_message(msg: AnyMessage, index: int, totalmessages: int):
+            # Always keep last 10 messages
+            if index >= totalmessages - 10:
+                return True
+
+            # Keep all other messages
+            return False
+
+        # Apply custom filtering
+        filteredmessages = [
+            msg
+            for idx, msg in enumerate(allmessages)
+            if is_relevant_message(msg, idx, len(allmessages))
+        ]
+
+        return filteredmessages
+    
+    
+# --------------------------
+#  AGENT (v2) MAIN LLM + MEMORY MANAGER LLM
+# --------------------------
+class Agentv2:
+    def __init__(
+        self, llm: BaseChatModel, tools: list, checkpointer: SqliteSaver | None
+    ):
+        """Initialize the agent with an LLM and tools."""
+        # Store the LLM instance
+        self.llm = llm
+        self.tools = tools
 
         self.checkpointer = checkpointer
 
@@ -80,7 +152,7 @@ class Agent:
         builder = StateGraph(AgentState)
         builder.add_node("memory_manager", self.memory_manager)
         builder.add_node("LLM_assistant", self.LLM_node)
-        builder.add_node("tools", ToolNode(tools, handle_tool_errors=False))
+        builder.add_node("tools", ToolNode(self.tools, handle_tool_errors=False))
 
         builder.add_edge(START, "memory_manager")
         builder.add_edge("memory_manager", "LLM_assistant")
@@ -105,15 +177,14 @@ class Agent:
         # Apply custom filtering
         llm_input = [
             SystemMessage(content=get_system_prompt(state.get("core_memories", []), messages_list, cdu="memory")),
-        ]
-        
-        print(colored(llm_input, "blue"))
-        
+        ]        
 
         with open("./src/logs/llm_input_memories.txt", "w") as f:
-            for msg in llm_input:
-                f.write(f"{msg.content}\n")
-                
+            f.write("Empty" if not llm_input else "\n" + "\n".join(
+                f"{'DORI' if isinstance(m, AIMessage) else 'User' if isinstance(m, HumanMessage) else 'System' if isinstance(m, SystemMessage) else 'Tool'} - {m.content}"
+                for m in llm_input
+            ))
+
         # Call LLM
         ai_message = self.llm.invoke(llm_input)
         
@@ -129,12 +200,14 @@ class Agent:
 
         # Apply custom filtering
         llm_input = [
-            SystemMessage(content=get_system_prompt(state.get("core_memories", []))),
+            SystemMessage(content=get_system_prompt(state.get("core_memories", []), cdu = "mainv2")),
         ] + messages_list
 
         with open("./src/logs/llm_input.txt", "w") as f:
-            for msg in llm_input:
-                f.write(f"{msg.content}\n")
+            f.write("Empty" if not llm_input else "\n" + "\n".join(
+                f"{'DORI' if isinstance(m, AIMessage) else 'User' if isinstance(m, HumanMessage) else 'System' if isinstance(m, SystemMessage) else 'Tool'} - {m.content}"
+                for m in llm_input
+            ))
                 
         # Call LLM
         ai_message = self.llm_with_tools.invoke(llm_input)
@@ -168,5 +241,31 @@ class Agent:
 
         return filteredmessages
 
+# --------------------------
+# LLM
+# --------------------------
+llm = ChatOllama(
+    model=Settings.MODEL_NAME,
+    temperature=0,
+    num_ctx=16000,
+    n_seq_max=1,
+    extract_reasoning=False,
+)
 
-graph = Agent(llm, tools, checkpointer).build_graph()
+# --------------------------
+# TOOLS
+# --------------------------
+tools = [
+    get_list_of_tasks,
+    add_task,
+]
+
+memory_tools = [
+    save_core_memory
+]
+
+
+# --------------------------
+# AGENT
+graph = Agent(llm, tools + memory_tools, checkpointer).build_graph()
+#graph = Agentv2(llm, tools, checkpointer).build_graph()
