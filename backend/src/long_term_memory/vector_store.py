@@ -18,7 +18,7 @@ import requests
 from pathlib import Path
 from termcolor import cprint
 
-VECTOR_STORE = "chromadb"  # Change to "chromadb" if using ChromaDB | Change to "faiss" if using FAISS
+VECTOR_STORE = "faiss"  # Change to "chromadb" if using ChromaDB | Change to "faiss" if using FAISS
 
 def get_embedding_ollama(text: str, model="nomic-embed-text") -> list[float]:
     url = "http://localhost:11434/api/embed"
@@ -32,7 +32,7 @@ def get_embedding_ollama(text: str, model="nomic-embed-text") -> list[float]:
     return data.get("embeddings", [])[0]
 
 class VectorMemoryStore:
-    def __init__(self, dim=768, path="./backend/src/long-term-memory/vector_memory", vector_store: str = VECTOR_STORE):  # 768 is correct for nomic
+    def __init__(self, dim=768, collection_name: str = "docs", reset_on_init: bool = False, path: str = "./backend/src/long-term-memory/vector_memory", vector_store: str = VECTOR_STORE):  # 768 is correct for nomic
         self.dim = dim
         self.path = Path(path + "_" + vector_store)
         self.path.mkdir(parents=True, exist_ok=True)
@@ -41,7 +41,7 @@ class VectorMemoryStore:
         # Initialize Vector Store
         if self.vector_store == "chromadb":
             self.client = chromadb.PersistentClient(path=self.path, settings=chromadb.config.Settings(allow_reset=True))
-            self.collection = self.client.get_or_create_collection(name="docs")
+            self.collection = self.client.get_or_create_collection(name=collection_name)
         
         elif self.vector_store == "faiss":
             self.index = faiss.IndexFlatL2(dim)
@@ -49,8 +49,10 @@ class VectorMemoryStore:
             self.metadata_path = self.path / "metadata.json"
             if self.metadata_path.exists():
                 self.memories = json.loads(self.metadata_path.read_text())
-                
-        self.reset()
+
+        if reset_on_init:
+            cprint("Resetting vector store...", "yellow")
+            self.reset()
 
 
     def save(self, content:str, metadata=None):
@@ -105,29 +107,31 @@ class VectorMemoryStore:
             
             # Query the index
             distances, indexes = self.index.search(np.array([q_vec]), k)
+            distances = distances[0]  # Get the first (and only) result
+            indexes = indexes[0]  # Get the first (and only) result
             documents = [
                 self.memories[i]['content']
-                for i in indexes[0]
+                for i in indexes
                 if i < len(self.memories)
             ]
             
             unique_ids = [
                 self.memories[i]['id']
-                for i in indexes[0]
+                for i in indexes
                 if i < len(self.memories)
             ]
          
             metadatas = [
                 self.memories[i]['metadata']
-                for i in indexes[0]
+                for i in indexes
                 if i < len(self.memories)
             ]
          
             if include_tags:
                 warning = "Filtering by tags is not supported in FAISS. Returning all results."
                 cprint(warning, "red")
-
-        distances = np.array(distances).squeeze()  # Remove extra dimension
+        print(distances)
+        distances = np.array(distances)  # Remove extra dimension
         recencies = np.array([], dtype=float)
         importances = np.array([], dtype=float)
         for meta in metadatas:
@@ -197,7 +201,7 @@ class VectorMemoryStore:
             
 
 # Initialize Vector Memory Store
-vector_store = VectorMemoryStore()
+vector_store = VectorMemoryStore(collection_name="docs", reset_on_init=True)
 
 # Step 1: Save (store)
 # =====================
@@ -222,6 +226,8 @@ documents = [
    "metadata": {"tags": "animals", 
                 "importance": "5"}},
 ]
+
+
 
 for i, d in enumerate(documents):
   time.sleep(2)  # To ensure different timestamps
@@ -250,6 +256,7 @@ scores = alpha_importance*importances + alpha_recency*exp_recency + alpha_simila
 
 # Sort documents by score
 sorted_indices = np.argsort(scores)[::-1]  # Sort in descending order
+print(f"Sorted indices: {sorted_indices}")
 sorted_contents = [contents[i] for i in sorted_indices]
 sorted_distances = [distances[i] for i in sorted_indices]
 sorted_cosine_similarities = [cosine_similarities[i] for i in sorted_indices]
@@ -282,3 +289,4 @@ output = ollama.generate(
 
 cprint(f"GENERATION PROMPT: {generation_prompt}", "green")
 cprint(f"GENERATION OUTPUT: {output['response']}", "blue")
+vector_store.reset()
