@@ -4,6 +4,7 @@ import traceback
 from dataclasses import dataclass
 from typing import Annotated, List, Literal
 
+from agent import state
 from langchain_core.messages import ToolMessage
 from langchain_core.tools import InjectedToolCallId, tool
 from langgraph.graph.ui import push_ui_message
@@ -14,6 +15,7 @@ from termcolor import colored, cprint
 
 from config import Settings
 from long_term_memory.vector_store import VectorMemoryStore
+from agent.state import AgentState
 
 VERBOSE = bool(int(Settings.VERBOSE))
 
@@ -75,23 +77,26 @@ def add_task(new_task:str,
     return Command(update=update, goto="LLM_assistant")
 
 @tool
-def save_core_memory(new_core_memory:str,
+def save_short_term_memory(new_short_term_memory:str, keep_boolean:str, tag:str,
     tool_call_id: Annotated[str, InjectedToolCallId],
+    state: Annotated[AgentState, InjectedState()],
 ) -> Command:
     """
-    Save new memory or insight inferred from the user messages into the Core Memories section.
+    Save new short term memory or insight inferred from the user messages into the Short Term Memories section. Also known as Core Memories.
     Args:
-        new_core_memory (str): The new memory to be saved.
+        new_short_term_memory (str): The new memory to be saved. Keep it short and concise.
+        keep_boolean (str): "True" or "False" whether or not to keep the memory in the Short Term Memories section for forever. Only the user name should be kept forever.
+        tag: (str): The tag for the memory, e.g., "user_info", "DORI_info", "user_preferences" or "animals". You can combine them like: "user_info,user_preferences".
 
-    Call this tool autonomously, when you want to save new memory into the Core Memories section. The user will not explicitly ask you to do this.
-    Extract any relevant information from each user message and save it as a core memory.
+    Call this tool autonomously, when you want to save new memory into the Short Term or Core Memories section. The user will not explicitly ask you to do this.
+    Extract any relevant information from each user message and save it as a short term memory.
     You should use this tool frequently, everytime the user says something relevant.
-    Almost all interactions with the user will provide you with new information that can be stored as core memory.
+    Almost all interactions with the user will provide you with new information that can be stored as short term memory.
     You might need to call this tool often, so do not hesitate to use it when you think it is necessary.
     This helps you to build a more personalized experience.
 
-    ### When to Call `save_core_memory`
-    You must call `save_core_memory` when the user shares information such as:
+    ### When to Call `save_short_term_memory`
+    You must call `save_short_term_memory` when the user shares information such as:
     - Their name, age, location, or personal details
     - Interests, preferences, or background
     - Current activities, goals, or lifestyle choices
@@ -103,119 +108,118 @@ def save_core_memory(new_core_memory:str,
 
     Examples:
     - If the user says "My name is Martha", call:
-    new_core_memory="The user's name is Martha."
+    new_short_term_memory="The user's name is Martha."
     - If the user says "I'm a physics student", call this tool.:
-    new_core_memory="The user is a physics student."
+    new_short_term_memory="Martha is a physics student."
     - If the user says "My boyfriend plays chess", call this tool.:
-    new_core_memory="The user has a boyfriend."
+    new_short_term_memory="Martha has a boyfriend."
 
     """
+    tool_name = "save_short_term_memory"
+    max_temp_memories = 5  # Maximum number of temporary memories to keep in Short Term Memory
     
-    content = (
-        f"New core memory added successfully: {new_core_memory}"
-    )
-    
-    print(colored(f"New Core Memory: {new_core_memory}", "green"))
-    
-    tool_message = ToolMessage(content, tool_call_id=tool_call_id)
-
-    update = {
-        "messages": [tool_message],
-        "core_memories": [new_core_memory],
-        "tools_used": ["save_core_memory"],
-    }
-
-    return Command(update=update, goto="LLM_assistant")
-
-
-
-@tool
-def save_external_memory(new_external_memory:str,
-    tool_call_id: Annotated[str, InjectedToolCallId],
-) -> Command:
-    """
-    Save new memory or insight inferred from the user messages into the External Memories Vector Database.
-    Args:
-        new_external_memory (str): The new memory to be saved.
-
-    Call this when the user asks you to remember something about the past. 
-
-    ### When to Call `save_external_memory`
-    You must call `save_external_memory` when the user shares information such as:
-    - Past experiences, events, or stories
-    - Historical facts or details about their life
-    - Memories that are not directly related to the current conversation but are important for future interactions
-
-    """
-    
-    
-    # Initialize Vector Memory Store
-    vector_store = VectorMemoryStore(collection_name="DORI_Memories", reset_on_init=False)
-
-    # Step 1: Save (store)
-    # =====================
-
-    d = {
-        "content": new_external_memory,
-        "metadata": {
-            "tags": "NA",
-            "importance": "5"
+    try:
+        # Save Short Term Memory
+        # =====================2
+        
+        
+        short_term_memories = state.get("short_term_memories", [])
+        
+        d = {
+            "content": new_short_term_memory,
+            "metadata": {
+                "tags": tag,
+                "importance": "5",
+                "keep": keep_boolean,
+                "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            }
         }
-    }
 
 
-    vector_store.save(
-        content=d["content"],
-        metadata={**d["metadata"], "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
-    )
-    
-    vector_store.show_all()
-    
-    
-    
-    content = (
-        f"New external memory added successfully: {new_external_memory}"
-    )
+        short_term_memories += [d]
+        
+    except Exception as e:
+        content = f"Error saving short term memory: {e}"
+        
+    try:
+        # Save Long Term Memory (if needed)
+        # ======================
+                
+        # Separate fixed (keep=True) and temporary (keep=False) memories
+        fixed_memories = [m for m in short_term_memories if m["metadata"].get("keep") == "True"]
+        temp_memories = [m for m in short_term_memories if m["metadata"].get("keep") != "True"]
+        # Only move oldest temp memories to long term if over the limit (e.g., more than max_temp_memories)
+        long_term_memories_to_save = []
+        vector_store = VectorMemoryStore(collection_name="DORI_memories", reset_on_init=False)
+        if len(temp_memories) > max_temp_memories:
 
-    print(colored(f"New External Memory: {new_external_memory}", "green"))
+            # Move oldest temp memories to long term
+            long_term_memories_to_save = temp_memories[:-max_temp_memories]
+            temp_memories = temp_memories[-max_temp_memories:]
+
+            # Save to vector store
+            for d in long_term_memories_to_save:
+                vector_store.save(
+                    content=d["content"],
+                    metadata={**d["metadata"], "stored_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")},
+                )
+
+        # Merge fixed and trimmed temp memories to form updated short term
+        short_term_memories_updated = fixed_memories + temp_memories
+        
+        vector_store.show_all()
+        content = (
+            f"New Short Term memory added successfully: {new_short_term_memory}"
+            f"{len(long_term_memories_to_save)} memories moved to Long Term Memory."
+        )
+
+    except Exception as e:
+        content = f"Error saving long term memories: {e}"
+
+    print(colored(f"{content}", "green"))
 
     tool_message = ToolMessage(content, tool_call_id=tool_call_id)
-
+    
     update = {
         "messages": [tool_message],
-        "core_memories": [new_external_memory],
-        "tools_used": ["save_external_memory"],
+        "short_term_memories": short_term_memories_updated,
+        "tools_used": [tool_name],
     }
 
     return Command(update=update, goto="LLM_assistant")
 
 @tool
-def retrieve_external_memory(query:str,
+def retrieve_long_term_memory(query:str,
     tool_call_id: Annotated[str, InjectedToolCallId],
 ) -> Command:
     """
-    Retrieve memories from External Memories Vector Database based on a query
+    Retrieve memories from Long Term Memory Vector Database based on a query
     Args:
         query (str): The query to retrieve memories.
 
     Call this when the user asks you about remembering something about the past.
 
-    ### When to Call `retrieve_external_memory`
-    You must call `retrieve_external_memory` when the user asks for information such as:
+    ### When to Call `retrieve_long_term_memory`
+    You must call `retrieve_long_term_memory` when the user asks for information such as:
     - Past experiences, events, or stories
     - Historical facts or details about their life
+    
+    Consider the user name to make the query more personalized, use third person to make the query more natural.
 
     """
-    vector_store = VectorMemoryStore(collection_name="DORI_Memories", reset_on_init=False)
+    top_k_score = 3  # Number of top memories to retrieve
+    alpha_importance = 0
+    alpha_recency = 0
+    alpha_similarity = 1
+    
+    vector_store = VectorMemoryStore(collection_name="DORI_memories", reset_on_init=False)
 
     # Vector search
     contents, distances, cosine_similarities, recencies, importances = vector_store.search(query, k=vector_store.count_all(), include_tags=[])
 
     # Calculate scores based on importance, recency, and similarity
     cprint("\Documents reordered by SCORE:\nalpha_importance*importance + alpha_recency*0.995**recency + alpha_similarity*cosine_similarity", "yellow")
-    alpha_importance = 1
-    alpha_recency = 1
-    alpha_similarity = 1
+
     exp_recency = 0.995**recencies
     scores = alpha_importance*importances + alpha_recency*exp_recency + alpha_similarity*cosine_similarities
 
@@ -240,7 +244,7 @@ def retrieve_external_memory(query:str,
         print(f"     SCORE: {scores[sorted_indices[i]]}")
         print("-" * 40)
     
-    top_k_score = 3  # Number of top memories to retrieve
+    
     content = (
         f"Based on query: {query}, the top {top_k_score} retrieved memories are: {sorted_contents[:top_k_score]}"
     )
@@ -251,7 +255,7 @@ def retrieve_external_memory(query:str,
 
     update = {
         "messages": [tool_message],
-        "tools_used": ["retrieve_external_memory"],
+        "tools_used": ["retrieve_long_term_memory"],
     }
 
     return Command(update=update, goto="LLM_assistant")

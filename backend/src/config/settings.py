@@ -2,8 +2,7 @@ import os
 
 from dotenv import load_dotenv  # pip install python-dotenv
 
-load_dotenv()
-
+load_dotenv()  # Load local environment variables
 
 class Settings:
     VERBOSE = os.environ.get("VERBOSE")
@@ -17,3 +16,4 @@ class Settings:
     STT_LANGUAGE = os.environ.get("STT_LANGUAGE")
 
     SOFTWARE_VERSION = os.environ.get("SOFTWARE_VERSION")
+    

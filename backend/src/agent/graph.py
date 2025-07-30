@@ -12,9 +12,8 @@ from agent.state import AgentState
 from agent.tools_and_schemas import (
     get_list_of_tasks,
     add_task,
-    save_core_memory,
-    save_external_memory,
-    retrieve_external_memory,
+    save_short_term_memory,
+    retrieve_long_term_memory,
 )
 from config.settings import Settings
 from logs.log_utils import log_token_usage
@@ -87,7 +86,7 @@ class Agent:
 
         # Apply custom filtering
         llm_input = [
-            SystemMessage(content=get_system_prompt(state.get("core_memories", []), cdu = "main")),
+            SystemMessage(content=get_system_prompt(state.get("short_term_memories", []), cdu = "main")),
         ] + messages_list
 
         with open("./src/logs/llm_input.txt", "w") as f:
@@ -178,22 +177,23 @@ class Agentv2:
 
         # Apply custom filtering
         llm_input = [
-            SystemMessage(content=get_system_prompt(state.get("core_memories", []), messages_list, cdu="memory")),
+            SystemMessage(content=get_system_prompt(state.get("short_term_memories", []), messages_list, cdu="memory")),
         ]        
 
         with open("./src/logs/llm_input_memories.txt", "w") as f:
             f.write("Empty" if not llm_input else "\n" + "\n".join(
-                f"{'DORI' if isinstance(m, AIMessage) else 'User' if isinstance(m, HumanMessage) else 'System' if isinstance(m, SystemMessage) else 'Tool'} - {m.content}"
+                f"\n{'DORI' if isinstance(m, AIMessage) else 'User' if isinstance(m, HumanMessage) else 'System' if isinstance(m, SystemMessage) else 'Tool'} - {m.content}"
                 for m in llm_input
             ))
 
         # Call LLM
         ai_message = self.llm.invoke(llm_input)
         
-        # Extract new core memory from the LLM response
-        new_core_memory = ai_message.content.strip()
-        print(colored(f"New Core Memory: {new_core_memory}", "green"))
-        return {"core_memories": [new_core_memory]}
+        # Extract new short term memory from the LLM response
+        new_short_term_memory = ai_message.content.strip()
+        print(colored(f"New Short Term Memory: {new_short_term_memory}", "green"))
+        short_term_memories = state.get("short_term_memories", []) + new_short_term_memory
+        return {"short_term_memories": short_term_memories}
     
     # LLM Assistant Node
     def LLM_node(self, state: AgentState):
@@ -202,12 +202,12 @@ class Agentv2:
 
         # Apply custom filtering
         llm_input = [
-            SystemMessage(content=get_system_prompt(state.get("core_memories", []), cdu = "mainv2")),
+            SystemMessage(content=get_system_prompt(state.get("short_term_memories", []), cdu = "mainv2")),
         ] + messages_list
 
         with open("./src/logs/llm_input.txt", "w") as f:
             f.write("Empty" if not llm_input else "\n" + "\n".join(
-                f"{'DORI' if isinstance(m, AIMessage) else 'User' if isinstance(m, HumanMessage) else 'System' if isinstance(m, SystemMessage) else 'Tool'} - {m.content}"
+                f"\n{'DORI' if isinstance(m, AIMessage) else 'User' if isinstance(m, HumanMessage) else 'System' if isinstance(m, SystemMessage) else 'Tool'} - {m.content}"
                 for m in llm_input
             ))
                 
@@ -263,9 +263,8 @@ tools = [
 ]
 
 memory_tools = [
-    save_core_memory,
-    save_external_memory,
-    retrieve_external_memory,
+    save_short_term_memory,
+    retrieve_long_term_memory,
 ]
 
 

@@ -19,7 +19,8 @@ from pathlib import Path
 from termcolor import cprint
 
 VECTOR_STORE = "chromadb"  # Change to "chromadb" if using ChromaDB | Change to "faiss" if using FAISS
-
+ROUTE = "."
+print(f"Using vector store: {VECTOR_STORE}")
 def get_embedding_ollama(text: str, model="nomic-embed-text") -> list[float]:
     url = "http://localhost:11434/api/embed"
     payload = {
@@ -32,7 +33,7 @@ def get_embedding_ollama(text: str, model="nomic-embed-text") -> list[float]:
     return data.get("embeddings", [])[0]
 
 class VectorMemoryStore:
-    def __init__(self, dim=768, collection_name: str = "docs", reset_on_init: bool = False, path: str = "./backend/src/long_term_memory/vector_memory", vector_store: str = VECTOR_STORE):  # 768 is correct for nomic
+    def __init__(self, dim=768, collection_name: str = "docs", reset_on_init: bool = False, path: str = f"{ROUTE}/backend/src/long_term_memory/vector_memory", vector_store: str = VECTOR_STORE):  # 768 is correct for nomic
         self.dim = dim
         self.path = Path(path + "_" + vector_store)
         self.path.mkdir(parents=True, exist_ok=True)
@@ -80,57 +81,59 @@ class VectorMemoryStore:
     def search(self, query:str, k:int=3, include_tags:list=[]):
         # generate an embedding for the input and retrieve the most relevant doc
         cprint(f"Vector search for query: {query}", "yellow")
+        if self.count_all() == 0:
+            cprint("No documents found in vector store.", "red")
+            distances, unique_ids, metadatas, documents = [], [], [], []
+        else:
+            q_vec = np.array(get_embedding_ollama(query), dtype="float32")
 
-        q_vec = np.array(get_embedding_ollama(query), dtype="float32")
+            # Get the top k results from the collection
+            if self.vector_store == "chromadb":
+                
+                # Build filter dictionary
+                filters = {}
+                if include_tags:
+                    filters["tags"] = {"$in": include_tags}
+                
 
-        # Get the top k results from the collection
-        if self.vector_store == "chromadb":
-            
-            # Build filter dictionary
-            filters = {}
-            if include_tags:
-                filters["tags"] = {"$in": include_tags}
-            
-
-            # Query the collection with filtering
-            results = self.collection.query(
-                query_embeddings=[q_vec],
-                n_results=k,
-                where=None if not filters else filters,
-            )
+                # Query the collection with filtering
+                results = self.collection.query(
+                    query_embeddings=[q_vec],
+                    n_results=k,
+                    where=None if not filters else filters,
+                )
 
 
-            distances, unique_ids, metadatas = results['distances'][0], results['ids'][0], results['metadatas'][0]
-            documents = results['documents'][0] # list of documents
+                distances, unique_ids, metadatas, documents = results['distances'][0], results['ids'][0], results['metadatas'][0], results['documents'][0]
+                
+            elif self.vector_store == "faiss":
+                
+                # Query the index
+                distances, indexes = self.index.search(np.array([q_vec]), k)
+                distances = distances[0]  # Get the first (and only) result
+                indexes = indexes[0]  # Get the first (and only) result
+                documents = [
+                    self.memories[i]['content']
+                    for i in indexes
+                    if i < len(self.memories)
+                ]
+                
+                unique_ids = [
+                    self.memories[i]['id']
+                    for i in indexes
+                    if i < len(self.memories)
+                ]
             
-        elif self.vector_store == "faiss":
+                metadatas = [
+                    self.memories[i]['metadata']
+                    for i in indexes
+                    if i < len(self.memories)
+                ]
             
-            # Query the index
-            distances, indexes = self.index.search(np.array([q_vec]), k)
-            distances = distances[0]  # Get the first (and only) result
-            indexes = indexes[0]  # Get the first (and only) result
-            documents = [
-                self.memories[i]['content']
-                for i in indexes
-                if i < len(self.memories)
-            ]
-            
-            unique_ids = [
-                self.memories[i]['id']
-                for i in indexes
-                if i < len(self.memories)
-            ]
-         
-            metadatas = [
-                self.memories[i]['metadata']
-                for i in indexes
-                if i < len(self.memories)
-            ]
-         
-            if include_tags:
-                warning = "Filtering by tags is not supported in FAISS. Returning all results."
-                cprint(warning, "red")
-        print(distances)
+                if include_tags:
+                    warning = "Filtering by tags is not supported in FAISS. Returning all results."
+                    cprint(warning, "red")
+
         distances = np.array(distances)  # Remove extra dimension
         recencies = np.array([], dtype=float)
         importances = np.array([], dtype=float)
@@ -166,7 +169,10 @@ class VectorMemoryStore:
         
     def show_all(self):
         cprint("Vector store contents:", "yellow")
-
+        if self.count_all() == 0:
+            cprint("No documents found in vector store.", "red")
+            return
+        
         if self.vector_store == "faiss":
             for i, memory in enumerate(self.memories):
                 print(f"[{i}] Content: {memory['content']}")
@@ -201,32 +207,37 @@ class VectorMemoryStore:
             
 if __name__ == "__main__":
     # Initialize Vector Memory Store
-    vector_store = VectorMemoryStore(collection_name="docs", reset_on_init=True)
+    vector_store = VectorMemoryStore(collection_name="DORI_memories", reset_on_init=True)
 
     # Step 1: Save (store)
     # =====================
 
     documents = [
-    {"content": "User loves food.",
-    "metadata": {"tags": "preferences", 
+    {"content": "The name 'DORI' is inspired by the Nemo character Dory, who is known for her short-term memory loss. This is an internal joke and a reminder that DORI is designed to help users with their short-term memories. The idea was originally proposed by Javier Carrera, who is the coworker of the authors of this project.",
+    "metadata": {"tags": "DORI_history", 
+                "importance": "4"}},
+    {"content": "The authors of this project are Guillermo Escolano (Industrial Engineer) and Iria Cardiel (Physicist). They both work as AI Software Developers in the world of LLMs and AI Agents. This is their first project together.",
+    "metadata": {"tags": "DORI_history", 
                     "importance": "5"}},
-    {"content": "User went to the park on Monday.",
-    "metadata": {"tags": "activities", 
-                    "importance": "5"}},
-    {"content": "User dislikes football.",
-    "metadata": {"tags": "preferences",
-                    "importance": "5"}},
-    {"content": "User is a software engineer and works with AI.",
-    "metadata": {"tags": "occupation", 
-                    "importance": "5"}},
-    {"content": "User had a cat.",
-    "metadata": {"tags": "animals", 
-                    "importance": "5"}},
-    {"content": "User has a dog.",
-    "metadata": {"tags": "animals", 
-                    "importance": "5"}},
+    {"content": "Iria was born in 1998 in Alcorcon, Spain. She is has experience in AI in consulting firms.",
+    "metadata": {"tags": "user_history",
+                    "importance": "3"}},
+    {"content": "Iria is passionate about yoga and music",
+        "metadata": {"tags": "user_preferences",
+                        "importance": "3"}},
+    {"content": "Guillermo was born in 1998 in Madrid, Spain. He is always up to date with the latest AI news.",
+    "metadata": {"tags": "user_history", 
+                "importance": "3"}},
+    {"content": "Guillermo is passionate about sports, especially basketball.",
+    "metadata": {"tags": "user_preferences", 
+                "importance": "3"}},
+    {"content": "Iria has a cat named 'Agata'.",
+    "metadata": {"tags": "user_info,animals", 
+                    "importance": "2"}},
+    {"content": "Guillermo is a dog person.",
+    "metadata": {"tags": "user_info,animals", 
+                "importance": "2"}},
     ]
-
 
 
     for i, d in enumerate(documents):
@@ -241,7 +252,7 @@ if __name__ == "__main__":
 
     # Step 2: Search (retrieve)
     # =========================
-    query = "What animal does User have?"
+    query = "Female author's preferences"
 
     # Vector search
     contents, distances, cosine_similarities, recencies, importances = vector_store.search(query, k=vector_store.count_all(), include_tags=[])
@@ -289,4 +300,8 @@ if __name__ == "__main__":
 
     cprint(f"GENERATION PROMPT: {generation_prompt}", "green")
     cprint(f"GENERATION OUTPUT: {output['response']}", "blue")
-    vector_store.reset()
+    
+    # Initialize Vector Memory Store
+    # vector_store = VectorMemoryStore(collection_name="DORI_memories", reset_on_init=False)
+    # vector_store.show_all()
+    #vector_store.reset()

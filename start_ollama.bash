@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Load local environment config if it exists
-CONFIG_FILE="./.env.local"
+CONFIG_FILE="./.bash.config.local"
 if [ -f "$CONFIG_FILE" ]; then
     source "$CONFIG_FILE"
 else
