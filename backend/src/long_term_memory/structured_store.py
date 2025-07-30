@@ -4,7 +4,7 @@ from datetime import datetime
 import uuid
 
 class StructuredMemoryStore:
-    def __init__(self, db_path="backend/src/long-term-memory/structured_memory.db", reset_on_init=False):
+    def __init__(self, db_path="backend/src/long_term_memory/structured_memory.db", reset_on_init=False):
         self.conn = sqlite3.connect(db_path)
         self.conn.execute('''
             CREATE TABLE IF NOT EXISTS memories (
@@ -53,24 +53,24 @@ class StructuredMemoryStore:
         return cursor.fetchall()
     
 
+if __name__ == "__main__":
+    # Structured DB
+    sql_store = StructuredMemoryStore(reset_on_init=True)
+    sql_store.save(content="Martha's yoga class takes place every monday at 12.00 pm", tags=["sports"])
+    sql_store.save(content="Martha loves yoga.", tags=["interest", "sports"])
+    sql_store.save(content="Martha hates football.", tags=["interest", "sports"])
+    sql_store.save(content="Martha is 27 years old.", tags=["user_info", "age"])
+    sql_store.save(content="Martha is a software engineer.", tags=["user_info", "occupation"])
+    sql_store.save(content="Martha's favorite color is blue.", tags=["user_info", "preferences", "color"])
 
-# Structured DB
-sql_store = StructuredMemoryStore(reset_on_init=True)
-sql_store.save(content="Martha's yoga class takes place every monday at 12.00 pm", tags=["sports"])
-sql_store.save(content="Martha loves yoga.", tags=["interest", "sports"])
-sql_store.save(content="Martha hates football.", tags=["interest", "sports"])
-sql_store.save(content="Martha is 27 years old.", tags=["user_info", "age"])
-sql_store.save(content="Martha is a software engineer.", tags=["user_info", "occupation"])
-sql_store.save(content="Martha's favorite color is blue.", tags=["user_info", "preferences", "color"])
 
+    for row in sql_store.list_all():
+        print(row)
+        
+    print("\nInterest Memories:")
+    for memory in sql_store.search_by_tag("interest"):
+        print(memory)
 
-for row in sql_store.list_all():
-    print(row)
-    
-print("\nInterest Memories:")
-for memory in sql_store.search_by_tag("interest"):
-    print(memory)
-
-print("\nYoga Memories:")
-for memory in sql_store.search_by_content("yoga"):
-    print(memory)
+    print("\nYoga Memories:")
+    for memory in sql_store.search_by_content("yoga"):
+        print(memory)
