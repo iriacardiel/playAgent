@@ -13,6 +13,8 @@ from agent.tools_and_schemas import (
     get_list_of_tasks,
     add_task,
     save_core_memory,
+    save_external_memory,
+    retrieve_external_memory,
 )
 from config.settings import Settings
 from logs.log_utils import log_token_usage
@@ -261,7 +263,9 @@ tools = [
 ]
 
 memory_tools = [
-    save_core_memory
+    save_core_memory,
+    save_external_memory,
+    retrieve_external_memory,
 ]
 
 
