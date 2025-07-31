@@ -14,7 +14,7 @@ import numpy as np
 from termcolor import colored, cprint
 
 from config import Settings
-from long_term_memory.vector_store import VectorMemoryStore
+from long_term_memory.vector_store import ChromaVectorMemoryStore
 from agent.state import AgentState
 
 VERBOSE = bool(int(Settings.VERBOSE))
@@ -150,7 +150,7 @@ def save_short_term_memory(new_short_term_memory:str, keep_boolean:str, tag:str,
         temp_memories = [m for m in short_term_memories if m["metadata"].get("keep") != "True"]
         # Only move oldest temp memories to long term if over the limit (e.g., more than max_temp_memories)
         long_term_memories_to_save = []
-        vector_store = VectorMemoryStore(collection_name="DORI_memories", reset_on_init=False)
+        vector_store = ChromaVectorMemoryStore(collection_name="DORI_memories", reset_on_init=False)
         if len(temp_memories) > max_temp_memories:
 
             # Move oldest temp memories to long term
@@ -207,46 +207,21 @@ def retrieve_long_term_memory(query:str,
     Consider the user name to make the query more personalized, use third person to make the query more natural.
 
     """
-    top_k_score = 3  # Number of top memories to retrieve
-    alpha_importance = 0
-    alpha_recency = 0
-    alpha_similarity = 1
+    num_results = 3  # Number of top memories to retrieve
     
-    vector_store = VectorMemoryStore(collection_name="DORI_memories", reset_on_init=False)
+    vector_store = ChromaVectorMemoryStore(collection_name="DORI_memories", reset_on_init=False)
 
-    # Vector search
-    contents, distances, cosine_similarities, recencies, importances = vector_store.search(query, k=vector_store.count_all(), include_tags=[])
-
-    # Calculate scores based on importance, recency, and similarity
-    cprint("\Documents reordered by SCORE:\nalpha_importance*importance + alpha_recency*0.995**recency + alpha_similarity*cosine_similarity", "yellow")
-
-    exp_recency = 0.995**recencies
-    scores = alpha_importance*importances + alpha_recency*exp_recency + alpha_similarity*cosine_similarities
-
-    # Sort documents by score
-    sorted_indices = np.argsort(scores)[::-1]  # Sort in descending order
-    print(f"Sorted indices: {sorted_indices}")
-    sorted_contents = [contents[i] for i in sorted_indices]
-    sorted_distances = [distances[i] for i in sorted_indices]
-    sorted_cosine_similarities = [cosine_similarities[i] for i in sorted_indices]
-    sorted_recencies = [recencies[i] for i in sorted_indices]
-    sorted_exp_recency = [exp_recency[i] for i in sorted_indices]
-    sorted_importances = [importances[i] for i in sorted_indices]
-
-    cprint(f"alpha_importance = {alpha_importance} | alpha_recency = {alpha_recency} | alpha_similarity = {alpha_similarity}", "yellow")
-    for i, content in enumerate(sorted_contents):
-        print(f"\n[{i}] Content: {content}")
-        print(f"     Distance: {sorted_distances[i]}")
-        print(f"     Cosine Similarity: {sorted_cosine_similarities[i]}")
-        print(f"     Recency: {sorted_recencies[i]}")
-        print(f"     Exp Recency: {sorted_exp_recency[i]}")
-        print(f"     Importance: {sorted_importances[i]}")
-        print(f"     SCORE: {scores[sorted_indices[i]]}")
-        print("-" * 40)
+    results = vector_store.retrieve(
+            query=query,
+            alpha_importance=0.0,
+            alpha_recency=0.0,
+            alpha_similarity=1.0,
+            num_results=num_results
+        )
     
     
     content = (
-        f"Based on query: {query}, the top {top_k_score} retrieved memories are: {sorted_contents[:top_k_score]}"
+        f"Based on query: {query}, the top {num_results} retrieved memories are: {results}"
     )
 
     print(colored(f"{content}", "green"))
