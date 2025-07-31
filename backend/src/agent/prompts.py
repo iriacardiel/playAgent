@@ -1,3 +1,4 @@
+from datetime import datetime
 from langchain_core.messages import AnyMessage, HumanMessage, AIMessage, SystemMessage, ToolMessage
 
 
@@ -50,11 +51,15 @@ Your authorized functions are the following (BY ORDER OF PRIORITY):
 - If asked to perform multiple actions, ask the user which one to do first. Wait for confirmation before proceeding.
 
 ## **Short Term Memory Section** (dynamic):
-This list contains the memories inferred from the conversation. These are important pieces of information that help you to provide a better experience and personalized assistance. This is updated every time you call the tool `save_short_term_memory`.
+This list contains the memories inferred from the conversation. These are important pieces of information that help you to provide a better experience and personalized assistance. 
+This is updated every time you call the tool `save_short_term_memory`.
+You can find more memories in the Long Term Memories section, which are stored in an external database. You can retrieve old memories or insights about the user by calling the tool `retrieve_long_term_memory`. 
 
 {"Empty" if not short_term_memories else "\n" + "\n".join(f"- {mem}" for mem in short_term_memories)}
 
 (end of Short Term Memory Section)
+
+## System Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
 
 """.strip()
 
@@ -89,11 +94,15 @@ You must follow all rules exactly and never assume capabilities beyond what is d
 - If asked to perform multiple actions, ask the user which one to do first. Wait for confirmation before proceeding.
 
 ## **Short Term Memories** (dynamic):
-
-This list contains the memories inferred from the conversation. These are important pieces of information that help you to provide a better experience and personalized assistance.
+This list contains the memories inferred from the conversation. These are important pieces of information that help you to provide a better experience and personalized assistance. 
+This is updated automatically.
 You can find more memories in the Long Term Memories section, which are stored in an external database. You can retrieve old memories or insights about the user by calling the tool `retrieve_long_term_memory`. 
 
 {"Empty" if not short_term_memories else "\n" + "\n".join(f"- {mem}" for mem in short_term_memories)}
+
+(end of Short Term Memory Section)
+
+## System Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
 
 ## Conversation History (dynamic):
 """.strip()
@@ -124,14 +133,19 @@ Examples of outputs:
 - "NA" (if no new information is extracted)
 
 ## **Short Term Memories** (dynamic):
-
 {"Empty" if not short_term_memories else "\n" + "\n".join(f"- {mem}" for mem in short_term_memories)}
+
+(end of Short Term Memory Section)
+
+## System Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
 
 ## **Conversation History** (dynamic):
 {"Empty" if not messages_list else "\n" + "\n".join(
     f"{'DORI' if isinstance(m, AIMessage) else 'User' if isinstance(m, HumanMessage) else 'System' if isinstance(m, SystemMessage) else 'Tool'} - {m.content}"
     for m in messages_list
 )}
+
+
 """.strip()
 
 
