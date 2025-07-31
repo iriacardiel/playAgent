@@ -234,3 +234,30 @@ def retrieve_long_term_memory(query:str,
     }
 
     return Command(update=update, goto="LLM_assistant")
+
+
+@tool
+def check_current_time(
+    tool_call_id: Annotated[str, InjectedToolCallId],
+) -> Command:
+    """
+    Check the current time. Convert the current time to a human-readable format:
+    
+    Example:
+    Current time is: 2023-10-01 12:00:00 --> it is 12:00 PM on October 1st, 2023.
+
+    """
+    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    content = f"Current time is: {current_time}"
+
+    print(colored(f"{content}", "green"))
+
+    tool_message = ToolMessage(content, tool_call_id=tool_call_id)
+
+    update = {
+        "messages": [tool_message],
+        "tools_used": ["check_current_time"],
+    }
+
+    return Command(update=update, goto="LLM_assistant")
+

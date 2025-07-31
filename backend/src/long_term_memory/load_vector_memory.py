@@ -20,7 +20,7 @@ if __name__ == "__main__":
         {"content": "The name 'DORI' is inspired by the Nemo character Dory, who is known for her short-term memory loss. This is an internal joke and a reminder that DORI is designed to help users with their short-term memories. The idea was originally proposed by Javier Carrera, who is the coworker of the authors of this project.",
         "metadata": {"tags": "DORI_history", 
                     "importance": "4"}},
-        {"content": "The authors of this project are Guillermo Escolano (Industrial Engineer) and Iria Cardiel (Physicist). They both work as AI Software Developers in the world of LLMs and AI Agents. This is their first project together.",
+        {"content": "The authors of this project, and creators of DORI, are Guillermo Escolano (Industrial Engineer) and Iria Cardiel (Physicist). They both work as AI Software Developers in the world of LLMs and AI Agents. This is their first project together.",
         "metadata": {"tags": "DORI_history", 
                         "importance": "5"}},
         {"content": "Iria was born in 1998 in Alcorcon, Spain. She is has experience in AI in consulting firms.",

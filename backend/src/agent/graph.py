@@ -12,6 +12,7 @@ from agent.state import AgentState
 from agent.tools_and_schemas import (
     get_list_of_tasks,
     add_task,
+    check_current_time,
     save_short_term_memory,
     retrieve_long_term_memory,
 )
@@ -82,7 +83,7 @@ class Agent:
     # LLM Assistant Node
     def LLM_node(self, state: AgentState):
         """LLM Assistant Node - Handles LLM interactions."""
-        messages_list = self.filtermessages(state["messages"])
+        messages_list = self.filtermessages( 20, state["messages"])
 
         # Apply custom filtering
         llm_input = [
@@ -106,13 +107,13 @@ class Agent:
     # --------------------------
     # AGENT UTILS
     # --------------------------
-    def filtermessages(self, allmessages: list):
+    def filtermessages(self, last :int, allmessages: list):
         """Filter messages to keep only relevant ones."""
 
         # TODO: Pending to implement
         def is_relevant_message(msg: AnyMessage, index: int, totalmessages: int):
-            # Always keep last 10 messages
-            if index >= totalmessages - 10:
+            # Always keep last `last` messages
+            if index >= totalmessages - last:
                 return True
 
             # Keep all other messages
@@ -260,6 +261,7 @@ llm = ChatOllama(
 tools = [
     get_list_of_tasks,
     add_task,
+    check_current_time
 ]
 
 memory_tools = [
