@@ -206,102 +206,121 @@ class VectorMemoryStore:
             return len(self.collection.peek()["ids"])
             
 if __name__ == "__main__":
-    # Initialize Vector Memory Store
-    vector_store = VectorMemoryStore(collection_name="DORI_memories", reset_on_init=True)
+    # # Initialize Vector Memory Store
+    # vector_store = VectorMemoryStore(collection_name="DORI_memories", reset_on_init=True)
 
-    # Step 1: Save (store)
-    # =====================
+    # # Step 1: Save (store)
+    # # =====================
 
-    documents = [
-    {"content": "The name 'DORI' is inspired by the Nemo character Dory, who is known for her short-term memory loss. This is an internal joke and a reminder that DORI is designed to help users with their short-term memories. The idea was originally proposed by Javier Carrera, who is the coworker of the authors of this project.",
-    "metadata": {"tags": "DORI_history", 
-                "importance": "4"}},
-    {"content": "The authors of this project are Guillermo Escolano (Industrial Engineer) and Iria Cardiel (Physicist). They both work as AI Software Developers in the world of LLMs and AI Agents. This is their first project together.",
-    "metadata": {"tags": "DORI_history", 
-                    "importance": "5"}},
-    {"content": "Iria was born in 1998 in Alcorcon, Spain. She is has experience in AI in consulting firms.",
-    "metadata": {"tags": "user_history",
-                    "importance": "3"}},
-    {"content": "Iria is passionate about yoga and music",
-        "metadata": {"tags": "user_preferences",
-                        "importance": "3"}},
-    {"content": "Guillermo was born in 1998 in Madrid, Spain. He is always up to date with the latest AI news.",
-    "metadata": {"tags": "user_history", 
-                "importance": "3"}},
-    {"content": "Guillermo is passionate about sports, especially basketball.",
-    "metadata": {"tags": "user_preferences", 
-                "importance": "3"}},
-    {"content": "Iria has a cat named 'Agata'.",
-    "metadata": {"tags": "user_info,animals", 
-                    "importance": "2"}},
-    {"content": "Guillermo is a dog person.",
-    "metadata": {"tags": "user_info,animals", 
-                "importance": "2"}},
-    ]
+    # documents = [
+    # {"content": "The name 'DORI' is inspired by the Nemo character Dory, who is known for her short-term memory loss. This is an internal joke and a reminder that DORI is designed to help users with their short-term memories. The idea was originally proposed by Javier Carrera, who is the coworker of the authors of this project.",
+    # "metadata": {"tags": "DORI_history", 
+    #             "importance": "4"}},
+    # {"content": "The authors of this project are Guillermo Escolano (Industrial Engineer) and Iria Cardiel (Physicist). They both work as AI Software Developers in the world of LLMs and AI Agents. This is their first project together.",
+    # "metadata": {"tags": "DORI_history", 
+    #                 "importance": "5"}},
+    # {"content": "Iria was born in 1998 in Alcorcon, Spain. She is has experience in AI in consulting firms.",
+    # "metadata": {"tags": "user_history",
+    #                 "importance": "3"}},
+    # {"content": "Iria is passionate about yoga and music",
+    #     "metadata": {"tags": "user_preferences",
+    #                     "importance": "3"}},
+    # {"content": "Guillermo was born in 1998 in Madrid, Spain. He is always up to date with the latest AI news.",
+    # "metadata": {"tags": "user_history", 
+    #             "importance": "3"}},
+    # {"content": "Guillermo is passionate about sports, especially basketball.",
+    # "metadata": {"tags": "user_preferences", 
+    #             "importance": "3"}},
+    # {"content": "Iria has a cat named 'Agata'.",
+    # "metadata": {"tags": "user_info,animals", 
+    #                 "importance": "2"}},
+    # {"content": "Guillermo is a dog person.",
+    # "metadata": {"tags": "user_info,animals", 
+    #             "importance": "2"}},
+    # ]
 
 
-    for i, d in enumerate(documents):
-        time.sleep(2)  # To ensure different timestamps
-        vector_store.save(
-            content=d["content"],
-            metadata={**d["metadata"], "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
-        )
+    # for i, d in enumerate(documents):
+    #     time.sleep(2)  # To ensure different timestamps
+    #     vector_store.save(
+    #         content=d["content"],
+    #         metadata={**d["metadata"], "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+    #     )
     
-    vector_store.show_all()
-
-
-    # Step 2: Search (retrieve)
-    # =========================
-    query = "Female author's preferences"
-
-    # Vector search
-    contents, distances, cosine_similarities, recencies, importances = vector_store.search(query, k=vector_store.count_all(), include_tags=[])
-
-    # Calculate scores based on importance, recency, and similarity
-    cprint("\nContents reordered by SCORE:\nalpha_importance*importance + alpha_recency*0.995**recency + alpha_similarity*cosine_similarity", "yellow")
-    alpha_importance = 1
-    alpha_recency = 1
-    alpha_similarity = 1
-    exp_recency = 0.995**recencies
-    scores = alpha_importance*importances + alpha_recency*exp_recency + alpha_similarity*cosine_similarities
-
-    # Sort documents by score
-    sorted_indices = np.argsort(scores)[::-1]  # Sort in descending order
-    print(f"Sorted indices: {sorted_indices}")
-    sorted_contents = [contents[i] for i in sorted_indices]
-    sorted_distances = [distances[i] for i in sorted_indices]
-    sorted_cosine_similarities = [cosine_similarities[i] for i in sorted_indices]
-    sorted_recencies = [recencies[i] for i in sorted_indices]
-    sorted_exp_recency = [exp_recency[i] for i in sorted_indices]
-    sorted_importances = [importances[i] for i in sorted_indices]
-
-    cprint(f"alpha_importance = {alpha_importance} | alpha_recency = {alpha_recency} | alpha_similarity = {alpha_similarity}", "yellow")
-    for i, content in enumerate(sorted_contents):
-        print(f"\n[{i}] Content: {content}")
-        print(f"     Distance: {sorted_distances[i]}")
-        print(f"     Cosine Similarity: {sorted_cosine_similarities[i]}")
-        print(f"     Recency: {sorted_recencies[i]}")
-        print(f"     Exp Recency: {sorted_exp_recency[i]}")
-        print(f"     Importance: {sorted_importances[i]}")
-        print(f"     SCORE: {scores[sorted_indices[i]]}")
-        print("-" * 40)
-        
-        
-    # Step 3: Generate
-    # ================
-    top_score = 3
-    # # generate a response combining the prompt and data we retrieved in step 2
-    generation_prompt = f"Using this data:\n{sorted_contents[:top_score]}.\nRespond to this prompt:\n{query}"
-
-    output = ollama.generate(
-    model="mistral-small3.2:24b",
-    prompt=generation_prompt
-    )
-
-    cprint(f"GENERATION PROMPT: {generation_prompt}", "green")
-    cprint(f"GENERATION OUTPUT: {output['response']}", "blue")
-    
-    # Initialize Vector Memory Store
-    # vector_store = VectorMemoryStore(collection_name="DORI_memories", reset_on_init=False)
     # vector_store.show_all()
-    #vector_store.reset()
+
+
+    # # Step 2: Search (retrieve)
+    # # =========================
+    # query = "Female author's preferences"
+
+    # # Vector search
+    # contents, distances, cosine_similarities, recencies, importances = vector_store.search(query, k=vector_store.count_all(), include_tags=[])
+
+    # # Calculate scores based on importance, recency, and similarity
+    # cprint("\nContents reordered by SCORE:\nalpha_importance*importance + alpha_recency*0.995**recency + alpha_similarity*cosine_similarity", "yellow")
+    # alpha_importance = 1
+    # alpha_recency = 1
+    # alpha_similarity = 1
+    # exp_recency = 0.995**recencies
+    # scores = alpha_importance*importances + alpha_recency*exp_recency + alpha_similarity*cosine_similarities
+
+    # # Sort documents by score
+    # sorted_indices = np.argsort(scores)[::-1]  # Sort in descending order
+    # print(f"Sorted indices: {sorted_indices}")
+    # sorted_contents = [contents[i] for i in sorted_indices]
+    # sorted_distances = [distances[i] for i in sorted_indices]
+    # sorted_cosine_similarities = [cosine_similarities[i] for i in sorted_indices]
+    # sorted_recencies = [recencies[i] for i in sorted_indices]
+    # sorted_exp_recency = [exp_recency[i] for i in sorted_indices]
+    # sorted_importances = [importances[i] for i in sorted_indices]
+
+    # cprint(f"alpha_importance = {alpha_importance} | alpha_recency = {alpha_recency} | alpha_similarity = {alpha_similarity}", "yellow")
+    # for i, content in enumerate(sorted_contents):
+    #     print(f"\n[{i}] Content: {content}")
+    #     print(f"     Distance: {sorted_distances[i]}")
+    #     print(f"     Cosine Similarity: {sorted_cosine_similarities[i]}")
+    #     print(f"     Recency: {sorted_recencies[i]}")
+    #     print(f"     Exp Recency: {sorted_exp_recency[i]}")
+    #     print(f"     Importance: {sorted_importances[i]}")
+    #     print(f"     SCORE: {scores[sorted_indices[i]]}")
+    #     print("-" * 40)
+        
+        
+    # # Step 3: Generate
+    # # ================
+    # top_score = 3
+    # # # generate a response combining the prompt and data we retrieved in step 2
+    # generation_prompt = f"Using this data:\n{sorted_contents[:top_score]}.\nRespond to this prompt:\n{query}"
+
+    # output = ollama.generate(
+    # model="mistral-small3.2:24b",
+    # prompt=generation_prompt
+    # )
+
+    # cprint(f"GENERATION PROMPT: {generation_prompt}", "green")
+    # cprint(f"GENERATION OUTPUT: {output['response']}", "blue")
+    
+    # Initialize Vector Memory Store
+    vector_store = VectorMemoryStore(collection_name="DORI_memories", reset_on_init=False)
+    
+    # LIST COLLECTIONS
+    cprint("Collections...", "yellow")
+    for c in vector_store.client.list_collections():
+        print(f"COLLECTION {c.name} has {c.count()} records")
+
+        for i, r in enumerate(c.peek(limit=c.count())["documents"]):
+            print(f"  Document {i}: {r}")
+
+    
+    # # DELETING EMPTY COLLECTIONS
+    # cprint("Deleting empty collections...", "yellow")
+    # for c in vector_store.client.list_collections():
+    #     print(c.name)
+    #     print(c.count())
+    #     if c.count() == 0:
+    #         cprint(f"Deleting empty collection: {c.name}", "red")
+    #         vector_store.client.delete_collection(name=c.name)
+        
+
+    # vector_store.reset()
