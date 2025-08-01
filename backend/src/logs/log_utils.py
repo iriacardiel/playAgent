@@ -1,14 +1,23 @@
 import csv
+from config.settings import Settings
 from langchain_core.messages import AIMessage
 from datetime import datetime
 from typing import Any
 
 def log_token_usage(ai_message: AIMessage, messages_list: list[Any]):
     timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    token_usage = {
-        "input_tokens": ai_message.usage_metadata.get("input_tokens", 0),
-        "output_tokens": ai_message.usage_metadata.get("output_tokens", 0),
-    }
+    
+    if Settings.MODEL_SERVER == "OLLAMA":
+        token_usage = {
+            "input_tokens": ai_message.usage_metadata.get("input_tokens", 0),
+            "output_tokens": ai_message.usage_metadata.get("output_tokens", 0),
+        }
+    if Settings.MODEL_SERVER == "OPENAI":
+        token_usage = {
+            "input_tokens": 0,
+            "output_tokens": 0,
+        }
+        
 
     file_path = "./src/logs/token_usage_log.csv"
     

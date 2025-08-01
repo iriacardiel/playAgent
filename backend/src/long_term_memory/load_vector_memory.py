@@ -5,7 +5,7 @@ import ollama
 import numpy as np
 from termcolor import cprint
 
-MODE = "LOAD"  # "LOAD" / "READ"
+MODE = "READ"  # "LOAD" / "READ"
 
 if __name__ == "__main__":
 

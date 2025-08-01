@@ -3,6 +3,7 @@ import sqlite3
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import AnyMessage, SystemMessage, AIMessage, HumanMessage
 from langchain_ollama import ChatOllama
+from langchain_openai import ChatOpenAI
 from langgraph.checkpoint.sqlite import SqliteSaver
 from langgraph.graph import START, StateGraph
 from langgraph.prebuilt import ToolNode, tools_condition
@@ -247,13 +248,23 @@ class Agentv2:
 # --------------------------
 # LLM
 # --------------------------
-llm = ChatOllama(
-    model=Settings.MODEL_NAME,
-    temperature=0,
-    num_ctx=16000,
-    n_seq_max=1,
-    extract_reasoning=False,
-)
+if Settings.MODEL_SERVER == "OLLAMA":
+
+    llm = ChatOllama(
+        model=Settings.MODEL_NAME,
+        temperature=0,
+        num_ctx=16000,
+        n_seq_max=1,
+        extract_reasoning=False,
+    )
+print(Settings.OPENAI_API_KEY)
+if Settings.MODEL_SERVER == "OPENAI":
+    # Use OpenAI's Chat model
+    llm = ChatOpenAI(
+        model=Settings.MODEL_NAME,
+        api_key=Settings.OPENAI_API_KEY,
+        temperature=0,
+    )
 
 # --------------------------
 # TOOLS

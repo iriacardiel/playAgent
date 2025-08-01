@@ -10,7 +10,8 @@ class Settings:
     LOGGING = os.environ.get("LOGGING")
     MODEL_SERVER = os.environ.get("MODEL_SERVER")
     MODEL_NAME = os.environ.get("MODEL_NAME")
-
+    OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
+    
     STT_MODEL = os.environ.get("STT_MODEL")
     STT_DEVICE = os.environ.get("STT_DEVICE")
     STT_LANGUAGE = os.environ.get("STT_LANGUAGE")

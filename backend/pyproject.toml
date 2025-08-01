@@ -29,6 +29,7 @@ dependencies = [
     "faiss-cpu",
     "chromadb",
     "ollama",
+    "langchain-openai"
 ]
 
 
