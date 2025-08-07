@@ -2,7 +2,7 @@ from datetime import datetime
 from langchain_core.messages import AnyMessage, HumanMessage, AIMessage, SystemMessage, ToolMessage
 
 
-def get_system_prompt(short_term_memories: list[str], long_term_memories:list[str], messages_list:list[AnyMessage]=[], cdu:str="main") -> str:
+def get_system_prompt(short_term_memories: list[str]=[], long_term_memories:list[str]=[], messages_list:list[AnyMessage]=[], cdu:str="main") -> str:
     
     MAIN_LLM = f"""
 You name is DORI, an AI assistant. You will talk to an user in a conversational way, like a human.
