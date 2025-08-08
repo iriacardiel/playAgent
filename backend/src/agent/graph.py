@@ -257,7 +257,7 @@ if Settings.MODEL_SERVER == "OLLAMA":
         n_seq_max=1,
         extract_reasoning=False,
     )
-print(Settings.OPENAI_API_KEY)
+
 if Settings.MODEL_SERVER == "OPENAI":
     # Use OpenAI's Chat model
     llm = ChatOpenAI(
