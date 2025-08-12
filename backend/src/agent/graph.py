@@ -46,12 +46,12 @@ checkpointer = create_memory_checkpointer(
 # --------------------------
 class Agent:
     def __init__(
-        self, llm: BaseChatModel, tools: list, checkpointer: SqliteSaver | None
+        self, llm: BaseChatModel, tools: list, memory_tools: list, checkpointer: SqliteSaver | None
     ):
         """Initialize the agent with an LLM and tools."""
         # Store the LLM instance
         self.llm = llm
-        self.tools = tools
+        self.tools = tools + memory_tools
 
         self.checkpointer = checkpointer
 
@@ -129,121 +129,7 @@ class Agent:
 
         return filteredmessages
     
-    
-# --------------------------
-#  AGENT (v2) MAIN LLM + MEMORY MANAGER LLM
-# --------------------------
-class Agentv2:
-    def __init__(
-        self, llm: BaseChatModel, tools: list, checkpointer: SqliteSaver | None
-    ):
-        """Initialize the agent with an LLM and tools."""
-        # Store the LLM instance
-        self.llm = llm
-        self.tools = tools
 
-        self.checkpointer = checkpointer
-
-        # Bind the LLM with tools
-        self.llm_with_tools = llm.bind_tools(tools)
-
-    def build_graph(self):
-        """Create the agent graph."""
-        # --------------------------
-        # BUILD GRAPH
-        # --------------------------
-        builder = StateGraph(AgentState)
-        builder.add_node("memory_manager", self.memory_manager)
-        builder.add_node("LLM_assistant", self.LLM_node)
-        builder.add_node("tools", ToolNode(self.tools, handle_tool_errors=False))
-
-        builder.add_edge(START, "memory_manager")
-        builder.add_edge("memory_manager", "LLM_assistant")
-        builder.add_conditional_edges(
-            "LLM_assistant", tools_condition, path_map=["tools", "__end__"]
-        )
-
-        # --------------------------
-        # COMPILE GRAPH
-        # --------------------------
-        return builder.compile(checkpointer=self.checkpointer, debug=False)
-
-    # --------------------------
-    # NODES
-    # --------------------------
-
-    # Memory Manager Node
-    def memory_manager(self, state: AgentState):
-        """Memory Manager Node - Handles memory management."""
-        messages_list = self.filtermessages(state["messages"])
-
-        # Apply custom filtering
-        llm_input = [
-            SystemMessage(content=get_system_prompt(state.get("short_term_memories", []), messages_list, cdu="memory")),
-        ]        
-
-        with open("./src/logs/llm_input_memories.txt", "w") as f:
-            f.write("Empty" if not llm_input else "\n" + "\n".join(
-                f"\n{'DORI' if isinstance(m, AIMessage) else 'User' if isinstance(m, HumanMessage) else 'System' if isinstance(m, SystemMessage) else 'Tool'} - {m.content}"
-                for m in llm_input
-            ))
-
-        # Call LLM
-        ai_message = self.llm.invoke(llm_input)
-        
-        # Extract new short term memory from the LLM response
-        new_short_term_memory = ai_message.content.strip()
-        print(colored(f"New Short Term Memory: {new_short_term_memory}", "green"))
-        short_term_memories = state.get("short_term_memories", []) + new_short_term_memory
-        return {"short_term_memories": short_term_memories}
-    
-    # LLM Assistant Node
-    def LLM_node(self, state: AgentState):
-        """LLM Assistant Node - Handles LLM interactions."""
-        messages_list = self.filtermessages(state["messages"])
-
-        # Apply custom filtering
-        llm_input = [
-            SystemMessage(content=get_system_prompt(state.get("short_term_memories", []), cdu = "mainv2")),
-        ] + messages_list
-
-        with open("./src/logs/llm_input.txt", "w") as f:
-            f.write("Empty" if not llm_input else "\n" + "\n".join(
-                f"\n{'DORI' if isinstance(m, AIMessage) else 'User' if isinstance(m, HumanMessage) else 'System' if isinstance(m, SystemMessage) else 'Tool'} - {m.content}"
-                for m in llm_input
-            ))
-                
-        # Call LLM
-        ai_message = self.llm_with_tools.invoke(llm_input)
-
-        # Token count (through LangChain AIMessage)
-        log_token_usage(ai_message, messages_list)
-        
-        return {"messages": [ai_message]}
-
-    # --------------------------
-    # AGENT UTILS
-    # --------------------------
-    def filtermessages(self, allmessages: list):
-        """Filter messages to keep only relevant ones."""
-
-        # TODO: Pending to implement
-        def is_relevant_message(msg: AnyMessage, index: int, totalmessages: int):
-            # Always keep last 10 messages
-            if index >= totalmessages - 10:
-                return True
-
-            # Keep all other messages
-            return False
-
-        # Apply custom filtering
-        filteredmessages = [
-            msg
-            for idx, msg in enumerate(allmessages)
-            if is_relevant_message(msg, idx, len(allmessages))
-        ]
-
-        return filteredmessages
 
 # --------------------------
 # LLM
@@ -283,5 +169,4 @@ memory_tools = [
 
 # --------------------------
 # AGENT
-graph = Agent(llm, tools + memory_tools, checkpointer).build_graph()
-#graph = Agentv2(llm, tools, checkpointer).build_graph()
+graph = Agent(llm, tools, memory_tools, checkpointer).build_graph()
