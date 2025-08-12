@@ -16,7 +16,7 @@ import requests
 from pathlib import Path
 from termcolor import cprint
 
-ROUTE = "."
+ROUTE = "." # TODO FILL 
 def get_embedding_ollama(text: str, model="nomic-embed-text") -> list[float]:
     url = "http://localhost:11434/api/embed"
     payload = {
