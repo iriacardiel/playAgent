@@ -56,7 +56,7 @@ class Agent:
         self.checkpointer = checkpointer
 
         # Bind the LLM with tools
-        self.llm_with_tools = llm.bind_tools(tools)
+        self.llm_with_tools = llm.bind_tools(self.tools)
 
     def build_graph(self):
         """Create the agent graph."""
