@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import Annotated, List, Literal
 
 from agent import state
-from langchain_core.messages import ToolMessage
+from langchain_core.messages import ToolMessage, AIMessage
 from langchain_core.tools import InjectedToolCallId, tool
 from langgraph.graph.ui import push_ui_message
 from langgraph.prebuilt import InjectedState
@@ -15,13 +15,13 @@ from termcolor import colored, cprint
 
 from config import Settings
 from long_term_memory.vector_store import ChromaVectorMemoryStore
-from agent.state import AgentState
+from agent_multi.state import AgentState
 
 VERBOSE = bool(int(Settings.VERBOSE))
 
-# --------------------------
+# -----------------------------------------------------------------------------
 # TOOLS
-# --------------------------
+# -----------------------------------------------------------------------------
 
 
 @tool
@@ -75,6 +75,35 @@ def add_task(new_task:str,
     }
 
     return Command(update=update, goto="LLM_assistant")
+
+@tool
+def check_current_time(
+    tool_call_id: Annotated[str, InjectedToolCallId],
+) -> Command:
+    """
+    Check the current time. Convert the current time to a human-readable format:
+    
+    Example:
+    Current time is: 2023-10-01 12:00:00 --> it is 12:00 PM on October 1st, 2023.
+
+    """
+    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    content = f"Current time is: {current_time}"
+
+    print(colored(f"{content}", "green"))
+
+    tool_message = ToolMessage(content, tool_call_id=tool_call_id)
+
+    update = {
+        "messages": [tool_message],
+        "tools_used": ["check_current_time"],
+    }
+
+    return Command(update=update, goto="memory_manager")
+
+# -----------------------------------------------------------------------------
+# MEMORY TOOLS
+# -----------------------------------------------------------------------------
 
 @tool
 def save_short_term_memory(new_short_term_memory:str, keep_boolean:str, tag:str,
@@ -181,12 +210,14 @@ def save_short_term_memory(new_short_term_memory:str, keep_boolean:str, tag:str,
     tool_message = ToolMessage(content, tool_call_id=tool_call_id)
     
     update = {
-        "messages": [tool_message],
+        "mem_messages": [tool_message],
         "short_term_memories": short_term_memories_updated,
         "tools_used": [tool_name],
     }
 
     return Command(update=update, goto="LLM_assistant")
+
+
 
 @tool
 def retrieve_long_term_memory(query:str,
@@ -229,35 +260,28 @@ def retrieve_long_term_memory(query:str,
     tool_message = ToolMessage(content, tool_call_id=tool_call_id)
 
     update = {
-        "messages": [tool_message],
+        "mem_messages": [tool_message],
+        "long_term_memories": results,
         "tools_used": ["retrieve_long_term_memory"],
     }
 
-    return Command(update=update, goto="LLM_assistant")
+    return Command(update=update, goto="memory_manager")
 
 
-@tool
-def check_current_time(
-    tool_call_id: Annotated[str, InjectedToolCallId],
-) -> Command:
-    """
-    Check the current time. Convert the current time to a human-readable format:
-    
-    Example:
-    Current time is: 2023-10-01 12:00:00 --> it is 12:00 PM on October 1st, 2023.
 
-    """
-    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    content = f"Current time is: {current_time}"
+# -----------------------------------------------------------------------------
+# Routing conditions (one per channel)
+# -----------------------------------------------------------------------------
 
-    print(colored(f"{content}", "green"))
+def tools_condition_main(state: AgentState) -> str:
+    last = state["messages"][-1] if state.get("messages") else None
+    if isinstance(last, AIMessage) and getattr(last, "tool_calls", None):
+        return "tools"
+    return "__end__"
 
-    tool_message = ToolMessage(content, tool_call_id=tool_call_id)
 
-    update = {
-        "messages": [tool_message],
-        "tools_used": ["check_current_time"],
-    }
-
-    return Command(update=update, goto="LLM_assistant")
-
+def tools_condition_mem(state: AgentState) -> str:
+    last = state["mem_messages"][-1] if state.get("mem_messages") else None
+    if isinstance(last, AIMessage) and getattr(last, "tool_calls", None):
+        return "mem_tools"
+    return "__end__"

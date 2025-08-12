@@ -31,8 +31,12 @@ class TokenUsage(TypedDict):
 
 # State:
 class AgentState(TypedDict, total=False):
+    # User-facing conversation (DORI)
     messages: Annotated[List[AnyMessage], add_messages]
     ui: Annotated[Sequence[AnyUIMessage], ui_message_reducer]
-    tasks: Annotated[list[str], add_str]
+    # Memory-manager-only channel
+    mem_messages: Annotated[List[AnyMessage], add_messages]
+    task: Annotated[list[str], add_str]
     tools_used : Annotated[list[str], add_str]
     short_term_memories: list[dict]
+    long_term_memories: list[dict]

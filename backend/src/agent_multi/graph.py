@@ -1,25 +1,30 @@
 import sqlite3
 
 from langchain_core.language_models.chat_models import BaseChatModel
-from langchain_core.messages import AnyMessage, SystemMessage, AIMessage, HumanMessage
+from langchain_core.messages import message_to_dict, AnyMessage, ToolMessage, SystemMessage, AIMessage, HumanMessage
 from langchain_ollama import ChatOllama
 from langchain_openai import ChatOpenAI
 from langgraph.checkpoint.sqlite import SqliteSaver
 from langgraph.graph import START, StateGraph
 from langgraph.prebuilt import ToolNode, tools_condition
+from langchain_core.tools import BaseTool
+from langgraph.types import Command
 
-from agent.prompts import get_system_prompt
-from agent.state import AgentState
-from agent.tools_and_schemas import (
+from agent_multi.prompts import get_system_prompt
+from agent_multi.state import AgentState
+from agent_multi.tools_and_schemas import (
     get_list_of_tasks,
     add_task,
     check_current_time,
     save_short_term_memory,
     retrieve_long_term_memory,
+    tools_condition_main,
+    tools_condition_mem
 )
 from config.settings import Settings
 from logs.log_utils import log_token_usage
-from termcolor import colored
+from termcolor import colored, cprint
+from typing import Annotated, TypedDict, List, Any, Dict
 
 VERBOSE = bool(int(Settings.VERBOSE))
 
@@ -51,12 +56,14 @@ class Agent:
         """Initialize the agent with an LLM and tools."""
         # Store the LLM instance
         self.llm = llm
-        self.tools = tools + memory_tools
+        self.tools = tools
+        self.memory_tools = memory_tools
 
         self.checkpointer = checkpointer
 
         # Bind the LLM with tools
-        self.llm_with_tools = llm.bind_tools(self.tools)
+        self.llm_with_tools = llm.bind_tools(tools)
+        self.llm_with_memory_tools = llm.bind_tools(memory_tools)
 
     def build_graph(self):
         """Create the agent graph."""
@@ -64,22 +71,63 @@ class Agent:
         # BUILD GRAPH
         # --------------------------
         builder = StateGraph(AgentState)
+        
+        builder.add_node("memory_manager", self.memory_manager)
         builder.add_node("LLM_assistant", self.LLM_node)
-        builder.add_node("tools", ToolNode(self.tools, handle_tool_errors=False))
 
-        builder.add_edge(START, "LLM_assistant")
+        # Tool nodes: standard ToolNode for assistant, custom for memory
+        builder.add_node("assistant_tools", ToolNode(self.tools, handle_tool_errors=False, messages_key="messages"))
+        builder.add_node("memory_tools", ToolNode(self.memory_tools, handle_tool_errors=False, messages_key="mem_messages"))
+
+        # Flow
+        builder.add_edge(START, "memory_manager")
+
         builder.add_conditional_edges(
-            "LLM_assistant", tools_condition, path_map=["tools", "__end__"]
+            "memory_manager",
+            tools_condition_mem,
+            path_map={"mem_tools": "memory_tools", "__end__": "LLM_assistant"},
         )
 
-        # --------------------------
-        # COMPILE GRAPH
-        # --------------------------
+        builder.add_conditional_edges(
+            "LLM_assistant",
+            tools_condition_main,
+            path_map={"tools": "assistant_tools", "__end__": "__end__"},
+        )
+
+        # After tools, route back to the corresponding LLM
+        builder.add_edge("assistant_tools", "LLM_assistant")
+        builder.add_edge("memory_tools", "memory_manager")
+
         return builder.compile(checkpointer=self.checkpointer, debug=False)
 
     # --------------------------
     # NODES
     # --------------------------
+        
+    
+    def memory_manager(self, state: AgentState):
+        # Use ONLY user-facing convo as evidence for memory extraction
+        messages_list = self.filtermessages(20, state.get("messages", []))
+
+        llm_input = [
+            SystemMessage(
+                content=get_system_prompt(
+                    state.get("short_term_memories", []),
+                    state.get("long_term_memories", []),
+                    messages_list,
+                    cdu="memory",
+                )
+            ),
+        ] + state.get("mem_messages", [])  # <-- include prior mem thread!
+        
+        with open("./src/logs/llm_memories_input.txt", "w") as f:
+            f.write("Empty" if not llm_input else "\n" + "\n".join(
+                f"{'DORI' if isinstance(m, AIMessage) else 'User' if isinstance(m, HumanMessage) else 'System' if isinstance(m, SystemMessage) else 'Tool'} - {m.content}"
+                for m in llm_input
+            ))
+
+        ai_message = self.llm_with_memory_tools.invoke(llm_input)
+        return {"mem_messages": [ai_message]}
     
     # LLM Assistant Node
     def LLM_node(self, state: AgentState):
@@ -96,10 +144,10 @@ class Agent:
                 f"{'DORI' if isinstance(m, AIMessage) else 'User' if isinstance(m, HumanMessage) else 'System' if isinstance(m, SystemMessage) else 'Tool'} - {m.content}"
                 for m in llm_input
             ))
-                
+            
         # Call LLM
         ai_message = self.llm_with_tools.invoke(llm_input)
-
+        cprint(message_to_dict(ai_message), "blue")
         # Token count (through LangChain AIMessage)
         log_token_usage(ai_message, messages_list)
         
