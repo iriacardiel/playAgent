@@ -15,8 +15,14 @@ import json
 import requests
 from pathlib import Path
 from termcolor import cprint
+import os
+current = os.getcwd()                     # /home/.../playAgent/backend
+play_agent_path = os.path.dirname(current)  # /home/.../playAgent
 
-ROUTE = "." # TODO FILL 
+cprint(play_agent_path, "red")
+
+ROUTE = play_agent_path  
+
 def get_embedding_ollama(text: str, model="nomic-embed-text") -> list[float]:
     url = "http://localhost:11434/api/embed"
     payload = {
