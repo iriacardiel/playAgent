@@ -26,3 +26,5 @@ dist-ssr
 # LangGraph API
 .next/
 next-env.d.ts
+
+.pnpm-store/

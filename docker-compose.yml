@@ -5,9 +5,70 @@ services:
     image: ollama/ollama:latest
     container_name: ollama
     restart: unless-stopped
-    ports:
-      - "11434:11434"
+    ports: ["11434:11434"]
     environment:
-      OLLAMA_KEEP_ALIVE: "4000"
+      OLLAMA_KEEP_ALIVE: "24h"
     volumes:
       - /home/ia-nsdas/.ollama:/root/.ollama
+    #gpus: all # Pending to add GPU support, problems installling NVIDIA Container Toolkit
+    
+  # backend:
+  #     build:
+  #       context: ./backend
+  #       dockerfile: Dockerfile
+  #     container_name: tars-backend
+  #     restart: unless-stopped
+  #     working_dir: /app
+  #     environment:
+  #       OLLAMA_HOST: http://ollama:11434
+  #       PORT: "2024"
+  #       PYTHONPATH: /app/src
+  #     command: >
+  #       /opt/venv/bin/langgraph dev
+  #       --config ./langgraph.json
+  #       --host 0.0.0.0
+  #       --port ${PORT:-2024}
+  #       --allow-blocking
+  #       --no-browser
+  #     ports:
+  #       - "2024:2024"
+  #     volumes:
+  #       - ./backend:/app
+
+  # Dev: mirrors `cd frontend && pnpm dev`
+  frontend:
+    build:
+      context: ./frontend
+      target: base
+    container_name: tars-frontend
+    restart: unless-stopped
+    working_dir: /app
+    environment:
+      NODE_ENV: development
+      NEXT_TELEMETRY_DISABLED: "1"
+    command: sh -c "pnpm install && pnpm dev -p 3003 -H 0.0.0.0" # Dev: mirrors `cd frontend && pnpm dev` pending for Prod: standalone Next.js server
+    ports:
+      - "3003:3003"
+    volumes:
+      - ./frontend:/app
+      - web_node_modules:/app/node_modules
+      - web_next_cache:/app/.next
+
+  # Prod: standalone Next.js server
+  # web:
+  #   build:
+  #     context: ./frontend
+  #     target: runner
+  #   ports:
+  #     - "3003:3003"
+  #   environment:
+  #     NODE_ENV: production
+  #     NEXT_TELEMETRY_DISABLED: "1"
+  #   restart: unless-stopped
+
+volumes:
+  chroma_data:  # backend volume
+  web_node_modules: # frontend volume
+  web_next_cache: # frontend volume
+
+

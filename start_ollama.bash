@@ -1,12 +1,7 @@
 #!/bin/bash
 
 # Load local environment config if it exists
-CONFIG_FILE="./.bash.config.local"
-if [ -f "$CONFIG_FILE" ]; then
-    source "$CONFIG_FILE"
-else
-    echo "Warning: Config file $CONFIG_FILE not found."
-fi
+export OLLAMA_KEEP_ALIVE=4000
 
 echo "OLLAMA_MODELS:" $OLLAMA_MODELS
 echo "OLLAMA_KEEP_ALIVE:" $OLLAMA_KEEP_ALIVE
