@@ -1,4 +1,4 @@
-# ===== Base: Node + pnpm via Corepack =====
+# ===== Base image: Node + pnpm via Corepack =====
 FROM node:22-alpine AS base
 WORKDIR /app
 ENV CI=1 NEXT_TELEMETRY_DISABLED=1
