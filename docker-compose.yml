@@ -12,28 +12,28 @@ services:
       - /home/ia-nsdas/.ollama:/root/.ollama
     gpus: all # install NVIDIA Container Toolkit
     
-#   backend:
-#       build:
-#         context: ./backend
-#         dockerfile: Dockerfile
-#       container_name: tars-backend
-#       restart: unless-stopped
-#       working_dir: /app
-#       environment:
-#         OLLAMA_HOST: http://ollama:11434
-#         PORT: "2024"
-#         PYTHONPATH: /app/src
-#       command: >
-#         /opt/venv/bin/langgraph dev
-#         --config ./langgraph.json
-#         --host 0.0.0.0
-#         --port ${PORT:-2024}
-#         --allow-blocking
-#         --no-browser
-#       ports:
-#         - "2024:2024"
-#       volumes:
-#         - ./backend:/app
+  backend:
+      build:
+        context: ./backend
+        dockerfile: Dockerfile
+      container_name: tars-backend
+      restart: unless-stopped
+      working_dir: /app
+      environment:
+        OLLAMA_HOST: http://ollama:11434
+        PORT: "2024"
+        PYTHONPATH: /app/src
+      command: >
+        /opt/venv/bin/langgraph dev
+        --config ./langgraph.json
+        --host 0.0.0.0
+        --port ${PORT:-2024}
+        --allow-blocking
+        --no-browser
+      ports:
+        - "2024:2024"
+      volumes:
+        - ./backend:/app # TODO: revisar si hace falta
 
   frontend:
     build:
@@ -49,11 +49,11 @@ services:
     ports:
       - "3003:3003"
     volumes:
-      - ./frontend:/app
-      - web_node_modules:/app/node_modules
-      - web_next_cache:/app/.next
+      - ./frontend:/app # TODO: revisar si hace falta
+      - web_node_modules:/app/node_modules # TODO: revisar si hace falta
+      - web_next_cache:/app/.next # TODO: revisar si hace falta
 
-#   # web:
+#   # web: # TODO: revisar si hace falta
 #   #   build:
 #   #     context: ./frontend
 #   #     target: runner
@@ -65,8 +65,8 @@ services:
 #   #   restart: unless-stopped
 
 volumes:
-  chroma_data:  # backend volume
-  web_node_modules: # frontend volume
-  web_next_cache: # frontend volume
+  chroma_data:  # backend volume # TODO: revisar si hace falta
+  web_node_modules: # frontend volume # TODO: revisar si hace falta
+  web_next_cache: # frontend volume # TODO: revisar si hace falta
 
 

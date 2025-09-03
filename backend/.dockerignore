@@ -1,5 +1,10 @@
-# Byte-compiled / optimized / DLL files
-
+# --- VCS / misc ---
+.git
+.gitignore
+.DS_Store
+*.swp
+*.swo
+.idea/
 .vscode/
 
 # --- Python caches & build artifacts ---
@@ -8,7 +13,6 @@
 **/*.py.class
 **/*.pyo
 **/*.pyd
-uv.lock
 
 # C extensions
 *.so
