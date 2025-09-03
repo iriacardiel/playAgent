@@ -1,9 +1,8 @@
 #!/bin/bash
 
 # Load local environment config if it exists
-export OLLAMA_KEEP_ALIVE=4000
+export OLLAMA_KEEP_ALIVE="24h"
 
-echo "OLLAMA_MODELS:" $OLLAMA_MODELS
 echo "OLLAMA_KEEP_ALIVE:" $OLLAMA_KEEP_ALIVE
 ollama serve
 
