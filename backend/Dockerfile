@@ -36,5 +36,3 @@ COPY . .
 
 # Install your package editable, without re-resolving deps
 RUN uv pip install --python "$VIRTUAL_ENV/bin/python" --no-deps -e .
-
-EXPOSE 2024
