@@ -24,7 +24,7 @@ RUN uv venv "$VIRTUAL_ENV"
 
 # ===== Dependency layer (cacheable) =====
 # Copy only the project metadata so we can cache the resolved deps
-COPY pyproject.toml uv.lock ./
+COPY pyproject.toml ./
 
 # Install locked dependencies *into* /opt/venv.
 # --python targets the venv interpreter; --active uses the already-active env.

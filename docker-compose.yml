@@ -9,7 +9,7 @@ services:
     environment:
       OLLAMA_KEEP_ALIVE: "24h"
     volumes:
-      - /home/ia-nsdas/.ollama:/root/.ollama
+      - /home/ia-nsdas/.ollama:/root/.ollama # Bind mount TO DO: probar a quitarlo a ver si funciona el pull
     gpus: all # install NVIDIA Container Toolkit
     
   backend:
@@ -18,7 +18,7 @@ services:
         dockerfile: Dockerfile
       container_name: agent-backend
       restart: unless-stopped
-      working_dir: /app
+      ports: ["2024:2024"]
       environment:
         OLLAMA_HOST: http://ollama:11434
         PORT: "2024"
@@ -30,31 +30,28 @@ services:
         --port ${PORT:-2024}
         --allow-blocking
         --no-browser
-      ports:
-        - "2024:2024"
       volumes:
         - ./backend:/app # Bind mount: live sync local changes to container (enables hot reload)
 
   frontend:
     build:
       context: ./frontend
-      target: base
+      dockerfile: Dockerfile
     container_name: agent-frontend
     restart: unless-stopped
-    working_dir: /app
+    ports: ["3003:3003"]
     environment:
       NODE_ENV: development
       NEXT_TELEMETRY_DISABLED: "1"
-    command: sh -c "pnpm install && pnpm dev -p 3003 -H 0.0.0.0" # Dev: mirrors `cd frontend && pnpm dev` pending for Prod: standalone Next.js server
-    ports:
-      - "3003:3003"
+    command: >
+      sh -c "pnpm dev -p 3003 -H 0.0.0.0" 
     volumes:
       - ./frontend:/app # Bind mount: Source code hot-reload
       - frontend_node_modules:/app/node_modules # Prevents your local node_modules (if it exists) from overriding the container's node_modules
       - frontend_next_cache:/app/.next # Preserves Next.js build cache between container restarts. Speeds up subsequent builds and hot reloads
 
 volumes:
-  frontend_node_modules: # frontend volume # TODO: revisar si hace falta
-  frontend_next_cache: # frontend volume # TODO: revisar si hace falta
+  frontend_node_modules: 
+  frontend_next_cache:
 
 

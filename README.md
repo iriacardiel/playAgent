@@ -15,3 +15,31 @@ This repository is an ongoing work in progress.
 ---
 
 ![alt text](media/DORI_Chat.png)
+
+**Opción 1:**
+
+Terminal 1:
+
+```
+OLLAMA_KEEP_ALIVE=24h ollama serve
+```
+
+
+Terminal 2 (levantar backend + frontend)
+
+```
+cd backend
+source .venv/bin/activate
+cd ..
+make dev
+```
+
+**Opción 2:**
+
+```
+docker compose up -d
+```
+
+```
+docker compose down -v
+```
