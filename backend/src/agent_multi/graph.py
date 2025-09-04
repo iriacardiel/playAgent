@@ -22,7 +22,7 @@ from agent_multi.tools_and_schemas import (
     tools_condition_mem
 )
 from config.settings import Settings
-from logs.log_utils import log_token_usage
+from utils.logger import log_token_usage, log_llm_input
 from termcolor import colored, cprint
 from typing import Annotated, TypedDict, List, Any, Dict
 
@@ -139,15 +139,11 @@ class Agent:
             SystemMessage(content=get_system_prompt(state.get("short_term_memories", []), cdu = "main")),
         ] + messages_list
 
-        with open("./src/logs/llm_input.txt", "w") as f:
-            f.write("Empty" if not llm_input else "\n" + "\n".join(
-                f"{'DORI' if isinstance(m, AIMessage) else 'User' if isinstance(m, HumanMessage) else 'System' if isinstance(m, SystemMessage) else 'Tool'} - {m.content}"
-                for m in llm_input
-            ))
+        log_llm_input(llm_input)
             
         # Call LLM
         ai_message = self.llm_with_tools.invoke(llm_input)
-        cprint(message_to_dict(ai_message), "blue")
+
         # Token count (through LangChain AIMessage)
         log_token_usage(ai_message, messages_list)
         

@@ -1,4 +1,4 @@
-from long_term_memory.vector_store import ChromaVectorMemoryStore
+from services.memory.chromadb_store import ChromaVectorMemoryStore
 from datetime import datetime
 import time
 import ollama

@@ -177,9 +177,6 @@ cython_debug/
 *.csv
 # --- Runtime data you DON'T want in the image ---
 
-src/logs/*.txt
-src/logs/*.csv
+src/logs/**
+src/mem_stores/**
 
-src/long_term_memory/vector_memory_chromadb/
-src/long_term_memory/vector_memory_faiss/
-src/long_term_memory/structured_memory.db

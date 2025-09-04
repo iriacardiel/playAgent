@@ -4,7 +4,7 @@ from datetime import datetime
 import uuid
 
 class StructuredMemoryStore:
-    def __init__(self, db_path="backend/src/long_term_memory/structured_memory.db", reset_on_init=False):
+    def __init__(self, db_path="backend/src/mem_stores/sqlite3_store.db", reset_on_init=False):
         self.conn = sqlite3.connect(db_path)
         self.conn.execute('''
             CREATE TABLE IF NOT EXISTS memories (

@@ -1,5 +1,5 @@
 """Configuration package."""
 
-from .vector_store import ChromaVectorMemoryStore
+from .chromadb_store import ChromaVectorMemoryStore
 
 __all__ = ["ChromaVectorMemoryStore"]
