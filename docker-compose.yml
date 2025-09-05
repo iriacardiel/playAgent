@@ -1,17 +1,30 @@
 # docker-compose.yml
 
 services:
+  # ollama:
+  #   image: ollama/ollama:latest
+  #   container_name: ollama
+  #   restart: unless-stopped
+  #   ports: ["11434:11434"]
+  #   environment:
+  #     OLLAMA_KEEP_ALIVE: "24h"
+  #   volumes:
+  #     - /home/ia-nsdas/.ollama:/root/.ollama # Bind mount TO DO: probar a quitarlo a ver si funciona el pull
+  #   gpus: all # install NVIDIA Container Toolkit
+    
   ollama:
-    image: ollama/ollama:latest
-    container_name: ollama
+    # Build from your custom Dockerfile (which COPYs ./.ollama into /root/.ollama)
+    build:
+      context: ./ollama-custom        # <- folder that has Dockerfile and .ollama/
+      dockerfile: Dockerfile
+    image: ollama-custom:2025-09-05  # tag the result so it's easy to reference/save
+    container_name: agent-ollama
     restart: unless-stopped
     ports: ["11434:11434"]
     environment:
       OLLAMA_KEEP_ALIVE: "24h"
-    volumes:
-      - /home/ia-nsdas/.ollama:/root/.ollama # Bind mount TO DO: probar a quitarlo a ver si funciona el pull
-    gpus: all # install NVIDIA Container Toolkit
-    
+    gpus: all
+
   backend:
       build:
         context: ./backend
