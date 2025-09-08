@@ -76,8 +76,8 @@ docker compose down -v
 To do so:
 ```bash
 mkdir ollama-custom/.ollama
-ollama serve # serve ollama
 export OLLAMA_MODELS="$PWD/ollama-custom/.ollama" # change ollama folder temporally
+ollama serve # serve ollama
 ollama pull gpt-oss:20b # pull the desired models
 ```
 

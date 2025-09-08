@@ -143,9 +143,9 @@ venv.bak/
 .venv/
 
 # --- Env / secrets (compose passes env separately) ---
-.env
-.env.*
-*.env
+# .env
+# .env.*
+# *.env
 
 # Spyder project settings
 .spyderproject

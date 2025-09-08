@@ -7,40 +7,54 @@ services:
     build:
       context: ./ollama-custom        # <- folder that has Dockerfile and .ollama/
       dockerfile: Dockerfile
-    image: agent-ollama-i:2025-09-05  # tag the result so it's easy to reference/save
+    image: agent-ollama-i:2025-09-08  # tag the result so it's easy to reference/save
     container_name: agent-ollama-c
     restart: unless-stopped
     ports: ["11434:11434"]
     environment:
       OLLAMA_KEEP_ALIVE: "24h"
-    gpus: all
+    #gpus: all
 
+  # backend:
+  #     build:
+  #       context: ./backend
+  #       dockerfile: Dockerfile
+  #     container_name: agent-backend-c
+  #     restart: unless-stopped
+  #     ports: ["2024:2024"]
+  #     environment:
+  #       OLLAMA_HOST: http://ollama:11434
+  #       PORT: "2024"
+  #       PYTHONPATH: /app/src
+  #     command: >
+  #       /opt/venv/bin/langgraph dev
+  #       --config ./langgraph.json
+  #       --host 0.0.0.0
+  #       --port ${PORT:-2024}
+  #       --allow-blocking
+  #       --no-browser
+  #     volumes:
+  #       - ./backend:/app # Bind mount: live sync local changes to container (enables hot reload)
   backend:
       build:
         context: ./backend
         dockerfile: Dockerfile
+      image: agent-backend-i:2025-09-08  # tag the result so it's easy to reference/save
       container_name: agent-backend-c
       restart: unless-stopped
-      ports: ["2024:2024"]
+      ports:
+        - "2024:2024"
       environment:
         OLLAMA_HOST: http://ollama:11434
-        PORT: "2024"
-        PYTHONPATH: /app/src
-      command: >
-        /opt/venv/bin/langgraph dev
-        --config ./langgraph.json
-        --host 0.0.0.0
-        --port ${PORT:-2024}
-        --allow-blocking
-        --no-browser
-      volumes:
-        - ./backend:/app # Bind mount: live sync local changes to container (enables hot reload)
-
+        PORT: "2024"   # optional; overrides the Dockerfile default
+      # No volumes: image is fully self-contained
+      
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
     container_name: agent-frontend-c
+    image: agent-frontend-i:2025-09-08
     restart: unless-stopped
     ports: ["3003:3003"]
     environment:
