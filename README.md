@@ -194,13 +194,13 @@ docker image ls | grep -E 'agent-(ollama|backend|frontend)-i'
 ```
 
 ```bash
-docker save -o agent-stack-2025-09-08.tar agent-ollama-i:2025-09-08 agent-backend-i:2025-09-08 agent-frontend-i:2025-09-08
+docker save -o agent-stack-latest.tar agent-ollama-i:latest agent-backend-i:latest agent-frontend-i:latest
 ``` 
 
 + Compress to smaller file (optional but recommended)
 
 ```bash
-gzip -9 agent-stack-2025-09-08.tar
+gzip -9 agent-stack-latest.tar
 ```
 
 ## On the target folder/machine (offline)
@@ -208,15 +208,21 @@ gzip -9 agent-stack-2025-09-08.tar
 **if gzipped**
 
 ```bash
-gunzip -c agent-stack-2025-09-08.tar.gz | docker load
+gunzip -c agent-stack-latest.tar.gz | docker load
 ```
 
-**else**
+### Load images from tar file:
 
 ```bash
-docker load -i agent-stack-2025-09-08.tar
+docker load -i agent-stack-latest.tar
 ```
 
 ```bash
 docker image ls | grep -E 'agent-(ollama|backend|frontend)-i'
+```
+
+### Then run with:
+
+```bash
+docker compose up --no-build -d
 ```

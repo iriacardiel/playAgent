@@ -7,14 +7,13 @@ services:
     build:
       context: ./ollama-custom        # <- folder that has Dockerfile and .ollama/
       dockerfile: Dockerfile
-    image: agent-ollama-i:2025-09-08  # tag the result so it's easy to reference/save
+    image: agent-ollama-i:latest  # tag the result so it's easy to reference/save
     container_name: agent-ollama-c
-    pull_policy: build
     restart: unless-stopped
     ports: ["11434:11434"]
     environment:
       OLLAMA_KEEP_ALIVE: "24h"
-    gpus: all # UNCOMMENT if you have nvidia-docker set up
+    #gpus: all # UNCOMMENT if you have nvidia-docker set up
     #volumes: # No volumes: image is fully self-contained
 
 
@@ -22,9 +21,8 @@ services:
       build:
         context: ./backend
         dockerfile: Dockerfile
-      image: agent-backend-i:2025-09-08  # tag the result so it's easy to reference/save
+      image: agent-backend-i:latest  # tag the result so it's easy to reference/save
       container_name: agent-backend-c
-      pull_policy: build
       restart: unless-stopped
       ports: ["2024:2024"] 
       environment:
@@ -36,9 +34,8 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    image: agent-frontend-i:2025-09-08
+    image: agent-frontend-i:latest
     container_name: agent-frontend-c
-    pull_policy: build
     restart: unless-stopped
     ports: ["3003:3003"]
     environment:
