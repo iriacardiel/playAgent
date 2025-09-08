@@ -1,35 +1,24 @@
-# ===== Base image: Node + pnpm via Corepack =====
+
 FROM node:22-alpine AS base
 WORKDIR /app
-ENV CI=1 NEXT_TELEMETRY_DISABLED=1
 RUN corepack enable && corepack prepare pnpm@9.12.3 --activate
 
-# ===== Deps (install packages) =====
 FROM base AS deps
 WORKDIR /app
-COPY pnpm-lock.yaml package.json ./
+COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
 
-# # ===== Dev runtime =====
-# FROM base AS dev
-# WORKDIR /app
-# COPY --from=deps /app/node_modules ./node_modules
-# COPY . .
-# CMD ["pnpm", "dev", "-p", "3003", "-H", "0.0.0.0"]
+FROM deps AS builder
+WORKDIR /app
+COPY . .
+ARG LANGGRAPH_API_URL=http://backend:2024
+ENV LANGGRAPH_API_URL=${LANGGRAPH_API_URL}
+RUN pnpm build
 
-# # ===== Builder (prod build) =====
-# FROM deps AS builder
-# WORKDIR /app
-# COPY . .
-# ENV NEXT_OUTPUT=standalone
-# RUN pnpm build
-
-# # ===== Prod runtime (slim image) =====
-# FROM node:22-alpine AS runner
-# WORKDIR /app
-# ENV NODE_ENV=production
-# COPY --from=builder /app/.next/standalone ./
-# COPY --from=builder /app/public ./public
-# COPY --from=builder /app/.next/static ./.next/static
-# EXPOSE 3000
-# CMD ["node", "server.js"]
+FROM node:22-alpine AS runner
+WORKDIR /app
+ENV NODE_ENV=production PORT=3003
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+COPY --from=builder /app/public ./public
+CMD ["node", "server.js"]
