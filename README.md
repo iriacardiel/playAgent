@@ -44,32 +44,74 @@ docker compose up -d
 docker compose down -v
 ```
 
+# Dockerize the Agent Stack for offline use / sharing
 
-# Create Ollama image:
+In order to build an image based on a module's source code, the following files must be present in the module folder:
 
+- (1) `.dockerignore`
+- (2) `Dockerfile`
+- (3) List of dependencies (`pyproject.toml`, `package.json`, etc)
+
+## Backend module:
 
 ```bash
-├── ollama-custom
-│   ├── Dockerfile
+backend/
+├── .dockerignore # (1)
+├── .env
+├── .gitignore
+├── .langgraph_api
+├── .venv
+├── Dockerfile # (2)
+├── langgraph.json
+├── langgraph.multi.json
+├── pyproject.toml # (3)
+├── src
+└── uv.lock
+```
+
+## Frontend module:
+
+```bash
+frontend/
+├── .codespellignore
+├── .dockerignore # (1)
+├── .env
+├── .gitignore
+├── .next
+├── .prettierignore
+├── Dockerfile # (2)
+├── LICENSE
+├── README.md
+├── components.json
+├── eslint.config.js
+├── next-env.d.ts
+├── next.config.mjs
+├── node_modules
+├── package.json # (3)
+├── pnpm-lock.yaml
+├── postcss.config.mjs
+├── prettier.config.js
+├── public
+├── src
+├── tailwind.config.js
+└── tsconfig.json
+```
+
+## Ollama module:
+
+To create a self-contained ollama image with the models included, follow these steps:
+
+```bash
+├── ollama-custom 
+│   ├── Dockerfile # (2)
 │   └── .ollama
 │       ├── blobs
-│       │   ├── sha256-31df23ea7daa448f9ccdbbcecce6c14689c8552222b80defd3830707c0139d4f
-│       │   ├── sha256-55c108d8e93662a22dcbed5acaa0374c7d740c6aa4e8b7eee7ae77ed7dc72a25
-│       │   ├── sha256-970aa74c0a90ef7482477cf803618e776e173c007bf957f635f1015bfcfef0e6
-│       │   ├── sha256-b112e727c6f18875636c56a779790a590d705aec9e1c0eb5a97d51fc2a778583
-│       │   ├── sha256-c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4
-│       │   ├── sha256-ce4a164fc04605703b485251fe9f1a181688ba0eb6badb80cc6335c0de17ca0d
-│       │   ├── sha256-d8ba2f9a17b3bbdeb5690efaa409b3fcb0b56296a777c7a69c78aa33bbddf182
-│       │   ├── sha256-f60356777647e927149cbd4c0ec1314a90caba9400ad205ddc4ce47ed001c2d6
-│       │   └── sha256-fa6710a93d78da62641e192361344be7a8c0a1c3737f139cf89f20ce1626b99c
 │       └── manifests
-│           └── registry.ollama.ai
-│               └── library
-│                   ├── gpt-oss
-│                   │   └── 20b
-│                   └── nomic-embed-text
-│                       └── latest
 ```
+
+`.dockerfile` (1) and dependencies (3) are not needed since we are using the official ollama image as base.
+
+For this particular module, we need to do some extra steps:
 
 1. With local ollama, pull the models into ollama-custom/.ollama folder.
 
@@ -118,3 +160,63 @@ docker rm -f ollama-test
 ```
 
 5. Now, when you run `docker compose up -d`, it will build the ollama image with the models included if it doesn't exist yet, and then start the container.
+
+## Build the images
+
+```bash 
+docker compose build --no-cache
+```
+
+## Initate the containers if needed (optional)
+
+Raise the images in detached mode:
+
+```bash 
+docker compose up -d
+```
+
+Check the status of the containers:
+
+```bash 
+docker compose logs -f
+```
+
+To stop and remove the containers, networks, and volumes:
+
+```bash 
+docker compose down -v
+```
+
+## Save and load all images (for offline use / sharing)
+
+```bash
+docker image ls | grep -E 'agent-(ollama|backend|frontend)-i'
+```
+
+```bash
+docker save -o agent-stack-2025-09-08.tar agent-ollama-i:2025-09-08 agent-backend-i:2025-09-08 agent-frontend-i:2025-09-08
+``` 
+
++ Compress to smaller file (optional but recommended)
+
+```bash
+gzip -9 agent-stack-2025-09-08.tar
+```
+
+## On the target folder/machine (offline)
+
+**if gzipped**
+
+```bash
+gunzip -c agent-stack-2025-09-08.tar.gz | docker load
+```
+
+**else**
+
+```bash
+docker load -i agent-stack-2025-09-08.tar
+```
+
+```bash
+docker image ls | grep -E 'agent-(ollama|backend|frontend)-i'
+```
