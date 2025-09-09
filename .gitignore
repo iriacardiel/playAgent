@@ -1,4 +1,3 @@
 ollama-custom/.ollama/**
 ca.github.com
-agent-stack-*.tar
-agent-stack-*.tar.gz
+tmp/*
