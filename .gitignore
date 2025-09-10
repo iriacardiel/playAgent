@@ -1,3 +1,2 @@
 ollama-custom/.ollama/**
-ca.github.com
-tmp/*
+tmp/**
