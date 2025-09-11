@@ -36,8 +36,7 @@ COPY --from=builder /opt/venv /opt/venv
 COPY . .
 
 # Set PYTHONPATH so Python can find your modules without installing as package
-ENV PYTHONPATH="/app/src" \
-    PORT=2024
+ENV PYTHONPATH="/app/src"
 
 # Default command
 CMD /opt/venv/bin/langgraph dev \

@@ -10,7 +10,7 @@ services:
     image: agent-ollama-i:latest  # tag the result so it's easy to reference/save
     container_name: agent-ollama-c
     restart: unless-stopped
-    ports: ["11434:11434"]
+    ports: ["${OLLAMA_PORT:-11434}:${OLLAMA_PORT:-11434}"]
     environment:
       OLLAMA_KEEP_ALIVE: "24h"
     gpus: all # UNCOMMENT if you have nvidia-docker set up
@@ -24,23 +24,25 @@ services:
       image: agent-backend-i:latest  # tag the result so it's easy to reference/save
       container_name: agent-backend-c
       restart: unless-stopped
-      ports: ["2024:2024"] 
+      ports: ["${BACKEND_PORT:-2024}:${BACKEND_PORT:-2024}"]
       environment:
-        OLLAMA_HOST: http://ollama:11434
-        PORT: "2024"
+        OLLAMA_HOST: http://ollama:${OLLAMA_PORT:-11434}
+        PORT: "${BACKEND_PORT:-2024}"
       #volumes: # No volumes: image is fully self-contained
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        LANGGRAPH_API_URL: http://backend:${BACKEND_PORT:-2024}  # or whatever you want at build time
     image: agent-frontend-i:latest
     container_name: agent-frontend-c
     restart: unless-stopped
-    ports: ["3003:3003"]
+    ports: ["${FRONTEND_PORT:-3000}:${FRONTEND_PORT:-3000}"]
     environment:
       NODE_ENV: production
       NEXT_TELEMETRY_DISABLED: "1"
-      PORT: "3003"
-      LANGGRAPH_API_URL: http://backend:2024
+      PORT: "${FRONTEND_PORT:-3000}"
+      LANGGRAPH_API_URL: http://backend:${BACKEND_PORT:-2024}
     #volumes: # No volumes: image is fully self-contained

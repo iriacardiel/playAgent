@@ -15,10 +15,12 @@ import json
 import requests
 from pathlib import Path
 from termcolor import cprint
-
+import os
 
 def get_embedding_ollama(text: str, model="nomic-embed-text") -> list[float]:
-    url = "http://localhost:11434/api/embed"
+    ollama_host = os.environ.get("OLLAMA_HOST", "http://localhost:11434") # IN DOCKER IT IS "http://ollama:11434"
+    url = f"{ollama_host}/api/embed"
+    print(url)
     payload = {
         "model": model,
         "input": text
