@@ -4,6 +4,7 @@ from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import AnyMessage, SystemMessage, AIMessage, HumanMessage
 from langchain_ollama import ChatOllama
 from langchain_openai import ChatOpenAI
+from langchain_google_vertexai import ChatVertexAI
 from langgraph.checkpoint.sqlite import SqliteSaver
 from langgraph.graph import START, StateGraph
 from langgraph.prebuilt import ToolNode, tools_condition
