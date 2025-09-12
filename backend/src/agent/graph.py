@@ -179,3 +179,49 @@ class Agent:
 # AGENT INSTANCE
 # --------------------------
 graph = Agent(llm, tools, checkpointer).build_graph()
+if Settings.MODEL_SERVER == "OLLAMA":
+
+    llm = ChatOllama(
+        model=Settings.MODEL_NAME,
+        temperature=0,
+        num_ctx=16000,
+        n_seq_max=1,
+        extract_reasoning=False,
+    )
+
+if Settings.MODEL_SERVER == "OPENAI":
+    # Use OpenAI's Chat model
+    llm = ChatOpenAI(
+        model=Settings.MODEL_NAME,
+        api_key=Settings.OPENAI_API_KEY,
+        temperature=0,
+    )
+
+if Settings.MODEL_SERVER == "CLAUDE":
+    # Use Google's Chat model
+    llm = ChatVertexAI(
+        model="gemini-2.0-flash-001",
+        temperature=0,
+        max_tokens=None,
+        max_retries=6,
+        stop=None,
+    )
+
+# --------------------------
+# TOOLS
+# --------------------------
+tools = [
+    get_list_of_tasks,
+    add_task,
+    check_current_time
+]
+
+memory_tools = [
+    save_short_term_memory,
+    retrieve_long_term_memory,
+]
+
+
+# --------------------------
+# AGENT
+graph = Agent(llm, tools, memory_tools, checkpointer).build_graph()
