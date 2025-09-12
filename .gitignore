@@ -1,2 +1,5 @@
 .env
 .bash.config.local
+package-lock.json
+.venv
+ApiKey.json
