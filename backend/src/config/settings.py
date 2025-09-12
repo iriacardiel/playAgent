@@ -15,6 +15,7 @@ class Settings:
     EMB_PROPERTY=os.environ.get("EMB_PROPERTY")
     EMB_SIMILARITY=os.environ.get("EMB_SIMILARITY")
 
+    GOOGLE_APPLICATION_CREDENTIALS = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
     STT_MODEL = os.environ.get("STT_MODEL")
     STT_DEVICE = os.environ.get("STT_DEVICE")
     STT_LANGUAGE = os.environ.get("STT_LANGUAGE")

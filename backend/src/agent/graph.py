@@ -201,7 +201,7 @@ if Settings.MODEL_SERVER == "OPENAI":
 if Settings.MODEL_SERVER == "CLAUDE":
     # Use Google's Chat model
     llm = ChatVertexAI(
-        model="gemini-2.0-flash-001",
+        model=Settings.MODEL_NAME,
         temperature=0,
         max_tokens=None,
         max_retries=6,
