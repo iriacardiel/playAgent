@@ -54,18 +54,26 @@ In order to build an image based on a module's source code, the following files 
 
 ## Backend module:
 
+If you are using Huggingface models, make sure to copy your huggingface models to the backend folder before building the image.
+
+```bash
+cd backend/ && mkdir .huggingface
+rsync -a /opt/.huggingface/ .huggingface/
+```
+
 ```bash
 backend/
 ├── .dockerignore # (1)
+├── .huggingface/
 ├── .env
 ├── .gitignore
-├── .langgraph_api
-├── .venv
+├── .langgraph_api/
+├── .venv/
 ├── Dockerfile # (2)
 ├── langgraph.json
 ├── langgraph.multi.json
 ├── pyproject.toml # (3)
-├── src
+├── src/
 └── uv.lock
 ```
 
@@ -268,3 +276,7 @@ docker image ls | grep -E 'agent-(ollama|backend|frontend)-i'
 ```bash
 docker compose up --no-build -d
 ```
+
+
+
+

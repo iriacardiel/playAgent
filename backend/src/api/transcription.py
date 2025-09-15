@@ -2,6 +2,7 @@ import logging
 import os
 import tempfile
 import traceback
+from termcolor import cprint
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
 from fastapi.responses import JSONResponse
@@ -11,6 +12,7 @@ from services.stt import STTModel
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+cprint(f"Using STT Model: {Settings.STT_MODEL} on device: {Settings.STT_DEVICE}", "red")
 
 stt_model = STTModel(
     model_id=Settings.STT_MODEL,

@@ -169,6 +169,7 @@ cython_debug/
 
 
 .langgraph_api/
+.huggingface/
 
 # Logging and checkpoint files
 *.db-shm

@@ -26,14 +26,22 @@ RUN uv sync --python "$VIRTUAL_ENV/bin/python" --active
 
 # ---- Runtime (slim, no build tools) ----
 FROM base AS runtime
-RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates \
+
+# Install runtime OS deps (includes ffmpeg)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    ffmpeg \
  && rm -rf /var/lib/apt/lists/*
 
 # Copy only the venv from builder (no duplicate app copy)
 COPY --from=builder /opt/venv /opt/venv
 
 # Copy source code directly to runtime (only once)
-COPY . .
+COPY langgraph.json ./
+COPY .env .env
+COPY src/ ./src/
+
+COPY .huggingface/ /opt/.huggingface/
 
 # Set PYTHONPATH so Python can find your modules without installing as package
 ENV PYTHONPATH="/app/src"
