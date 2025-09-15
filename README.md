@@ -113,22 +113,48 @@ To create a self-contained ollama image with the models included, follow these s
 
 For this particular module, we need to do some extra steps:
 
-1. With local ollama, pull the models into ollama-custom/.ollama folder.
+1. With local ollama:
 
-To do so:
+**Option A**: Pull the models into ollama-custom/.ollama folder.
+
 ```bash
 mkdir ollama-custom/.ollama
 export OLLAMA_MODELS="$PWD/ollama-custom/.ollama" # change ollama folder temporally
 ollama serve # serve ollama
 ollama pull gpt-oss:20b # pull the desired models
+ollama pull nomic-embed-text # pull the desired models
+
 ```
 
-2. ollama-custom/Dockerfile will handle the Ollama image pull and will set the ollama folder to ollama-custom/.ollama. As a last step, it will copy the contents of the .ollama folder to the container workdir. That way, the built image will contain the models so it wont need online conection when the images are initalizated.
+**Option B:** If firewall restrictions are activated, load them from the existing local ollama installation.
+
+```bash
+ls -la /opt/.ollama-dori/models/manifests/registry.ollama.ai/library/ # or your local ollama models folder
+```
+
+You should see something like this:
+
+```bash
+total 16
+drwxr-xr-x 4 icardielp icardielp 4096 Sep 12 12:01 .
+drwxr-xr-x 3 icardielp icardielp 4096 Sep 12 12:01 ..
+drwxr-xr-x 2 icardielp icardielp 4096 Sep 12 12:01 gpt-oss
+drwxr-xr-x 2 icardielp icardielp 4096 Sep 12 12:01 nomic-embed-text
+```
+
+Then copy the manifests and blobs to the ollama-custom/.ollama folder:
+
+```bash
+mkdir ollama-custom/.ollama
+rsync -a /opt/.ollama-dori/ ollama-custom/.ollama/ 
+```
+
+2. The ``ollama-custom/Dockerfile`` will handle the Ollama image pull and will set the ollama folder to ollama-custom/.ollama. As a last step, it will copy the contents of the .ollama folder to the container workdir. That way, the built image will contain the models so it wont need online conection when the images are initalizated.
 
 
 ```Dockerfile
 FROM ollama/ollama:0.11.3
-ENV OLLAMA_MODELS=/root/.ollama
+ENV OLLAMA_MODELS=/opt/.ollama-dori/models
 COPY --chown=0:0 ./.ollama/ /root/.ollama/
 ```
 
@@ -163,8 +189,24 @@ docker rm -f ollama-test
 
 ## Build the images
 
+**Option A**: All images at once
+
 ```bash 
 docker compose build --no-cache
+```
+
+**Option B**: One by one
+
+```bash 
+docker compose build --no-cache ollama 
+```
+
+```bash 
+docker compose build --no-cache backend 
+```
+
+```bash 
+docker compose build --no-cache frontend 
 ```
 
 ## Initate the containers if needed (optional)
