@@ -16,35 +16,54 @@ This repository is an ongoing work in progress.
 
 ![alt text](media/DORI_Chat.png)
 
-**Opción 1:**
+## Set up and start
 
-Terminal 1:
+### Ollama setup 
 
+```bash
+bash start-ollama.sh # to start ollama server, make sure you have ollama installed
 ```
-OLLAMA_KEEP_ALIVE=24h ollama serve
+
+```bash
+ollama pull gpt-oss:20b # only if not pulled yet
 ```
 
+### Frontend setup 
 
-Terminal 2 (levantar backend + frontend)
-
+```bash
+cd frontend
+pnpm install # only if not installed yet
+cd .. # go back to root folder
 ```
+
+### Backend setup
+
+```bash
 cd backend
+python3 -m venv .venv # only if not created yet
 source .venv/bin/activate
-cd ..
-make dev
+pip install uv # only if not installed yet
+uv sync # to sync dependencies to from pyproject.toml to .venv
+cd .. # go back to root folder
 ```
 
-**Opción 2:**
+### Run the stack
 
-```
-docker compose up -d
-```
-
-```
-docker compose down -v
+```bash
+make dev # to run both backend and frontend 
 ```
 
-# Dockerize the Agent Stack for offline use / sharing
+or
+
+```bash
+make dev-backend # to run backend only
+```
+
+```bash
+make dev-frontend # to run frontend only
+```
+
+## Dockerize the Agent Stack for offline use / sharing
 
 In order to build an image based on a module's source code, the following files must be present in the module folder:
 
