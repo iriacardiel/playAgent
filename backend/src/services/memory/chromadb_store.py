@@ -16,6 +16,7 @@ import requests
 from pathlib import Path
 from termcolor import cprint
 import os
+#import ollama 
 
 def get_embedding_ollama(text: str, model="nomic-embed-text") -> list[float]:
     ollama_host = os.environ.get("OLLAMA_HOST", "http://localhost:11434") # IN DOCKER IT IS "http://ollama:11434"
@@ -29,6 +30,10 @@ def get_embedding_ollama(text: str, model="nomic-embed-text") -> list[float]:
     response.raise_for_status()
     data = response.json()
     return data.get("embeddings", [])[0]
+
+# Testing this is the same
+#get_embedding_ollama("This is a sample text") == ollama.embed("nomic-embed-text", "This is a sample text").get("embeddings", [])[0]
+
 
 class ChromaVectorMemoryStore:
     def __init__(self, dim=768, collection_name: str = "docs", reset_on_init: bool = False, path: str = f"./src/mem_stores/"):  # 768 is correct for nomic
