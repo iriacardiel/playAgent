@@ -1,7 +1,7 @@
 from langgraph import Node
 from agent.prompts import get_judge_prompt
 
-class Judge(Node):
+class JudgeNode(Node):
     def __init__(self, judge_type: str, input_text: str):
         # judge_type could be 'user_input' or 'llm_output' or any custom type
         self.judge_type = judge_type
