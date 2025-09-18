@@ -29,7 +29,8 @@ dependencies = [
     "faiss-cpu",
     "chromadb",
     "ollama",
-    "langchain-openai"
+    "langchain-openai",
+    "langchain-google-vertexai>=2.1.2",
 ]
 
 
