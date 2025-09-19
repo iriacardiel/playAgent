@@ -10,6 +10,7 @@ from langgraph.graph import START, StateGraph
 from langgraph.prebuilt import ToolNode, tools_condition
 
 from agent.prompts import get_system_prompt
+from agent.prompts import get_judge_prompt
 from agent.judge_evaluator import JudgeNode
 from agent.state import AgentState
 from agent.tools_and_schemas import (
@@ -113,10 +114,6 @@ class Agent:
         # --------------------------
         # BUILD GRAPH
         # --------------------------
-        # TODO move func to agent utils
-        def is_safe_output(output_text: str) -> bool:
-            return True
-            #return output_text != "⚠️ Content blocked due to safety concerns."
 
         builder = StateGraph(AgentState)
         
@@ -162,21 +159,24 @@ class Agent:
         
         return {"messages": [ai_message]}
     
+    # Judge Node
     def judge_node(self, state: AgentState):
         """LLM Assistant Node - Handles LLM interactions."""
-        messages_list = self.filtermessages( 20, state["messages"])
-        last_message = messages_list[-1]
-        input_text = last_message.content
-        # if isinstance(last_message, HumanMessage):
-        #     input_text = last_message
-        # else:
-        #     input_message = last_message
+        input_text = self.filtermessages( 1, state["messages"]).content
 
-        if judge_content(input_text):
+        prompt = [
+                SystemMessage(content=get_judge_prompt(state.get("short_term_memories", []), cdu = "main")),
+            ] + input_text
+
+        response = llm.invoke(prompt)
+        print(response)
+        is_safe = response.strip().upper() == "SAFE"
+
+        if is_safe:
             return {}
         else:
             output = "⚠️ Content blocked due to safety concerns."
-            return  {"messages": [AIMessage(output)]}   # {"messages": [ai_message]}
+            return  {"messages": [AIMessage(output)]}
 
     # --------------------------
     # AGENT UTILS
@@ -236,19 +236,6 @@ if Settings.MODEL_SERVER == "CLAUDE":
         max_retries=6,
         stop=None,
     )
-
-
-# --------------------------
-# Judge
-# --------------------------
-    def judge_content(input_text: str) -> bool:
-        """Returns True if content is safe, False if it violates rules."""
-        prompt = [
-                SystemMessage(content=get_judge_prompt(state.get("short_term_memories", []), cdu = "main")),
-            ] + input_text
-        response = llm.invoke(prompt)
-        print(response)
-        return response.strip().upper() == "SAFE"
 
 
 # --------------------------
