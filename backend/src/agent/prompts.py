@@ -60,7 +60,7 @@ You can find more memories in the Long Term Memories section, which are stored i
 
 {"Empty" if not short_term_memories else "\n" + "\n".join(f"- {mem}" for mem in short_term_memories)}
 
-</short_term_memory>
+<short_term_memory>
 
 """.strip()
 
