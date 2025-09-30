@@ -1,26 +1,43 @@
+# === Dependencies
 import asyncio
 import logging
 import traceback
-from typing import Any
-from typing import Literal, Optional, List, Dict, Any, Union, Callable, Mapping, Iterable
-
+from typing import Literal, Optional, Dict, Any
 from termcolor import cprint
 from pprint import pprint
 
+# === Neo4j / LangChain
 from langchain_neo4j import GraphCypherQAChain, Neo4jGraph
-import ollama
 
-from config import Settings
+# === Local helpers
 from services.neo4j.prompts import CYPHER_GENERATION_PROMPT
 from helpers import helper_leaflet, helper_folium, helper_ollama
+
+# === Local settings
+from config import Settings
+
+# -----------------------------------------------------------------------------
+# Config
+# -----------------------------------------------------------------------------
 
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
-NEO4J_URI ="bolt://localhost:"+Settings.NEO4J_URI_PORT
 
+NEO4J_URI_PORT = Settings.NEO4J_URI_PORT
+NEO4J_URI ="bolt://localhost:"+ NEO4J_URI_PORT
+NEO4J_USER = Settings.NEO4J_USER
+NEO4J_PASSWORD = Settings.NEO4J_PASSWORD
+EMB_PROPERTY =Settings.EMB_PROPERTY
+EMB_DIMENSION = Settings.EMB_DIMENSION
+EMB_SIMILARITY =Settings.EMB_SIMILARITY
+
+
+# -----------------------------------------------------------------------------
+# Service
+# -----------------------------------------------------------------------------
 class Neo4jService:
     """Neo4j service
     """
@@ -41,8 +58,8 @@ class Neo4jService:
             cprint(f"Initializing graph at {NEO4J_URI}", "green")
             cls._graph = Neo4jGraph(
                 url=NEO4J_URI,
-                username=Settings.NEO4J_USER,
-                password=Settings.NEO4J_PASSWORD,
+                username=NEO4J_USER,
+                password=NEO4J_PASSWORD,
             )
             cls._initialized = True
 
@@ -232,10 +249,10 @@ class Neo4jService:
     def create_vector_index(cls, index_name: str = '',
                             node_label: Optional[str] = '',
                             relation_type: Optional[str] = '',
-                            emb_property: Optional[str] = Settings.EMB_PROPERTY,
-                            dim: Optional[int] = Settings.EMB_DIMENSION,
-                            similarity: Optional[str] = Settings.EMB_SIMILARITY):
-        cprint(Settings.EMB_SIMILARITY, "magenta")
+                            emb_property: Optional[str] = EMB_PROPERTY,
+                            dim: Optional[int] = EMB_DIMENSION,
+                            similarity: Optional[str] = EMB_SIMILARITY):
+
         try:
             if relation_type:
                 # For relationship index
@@ -622,8 +639,7 @@ class Neo4jService:
 
 
 async def main() -> None:
-    from config import Settings
-    print("yuhy")
+
     await Neo4jService.initialize()
 
     while True:

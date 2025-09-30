@@ -23,7 +23,6 @@ HERE = Path(__file__).parent
 MODEL_SERVER = Settings.MODEL_SERVER
 MODEL_NAME = Settings.MODEL_NAME
 
-# Initialize the chat model
 cprint(f"\nUsing LLM {MODEL_NAME} through {MODEL_SERVER}.", "green")
 if MODEL_SERVER == "OLLAMA":
   llm = ChatOllama(

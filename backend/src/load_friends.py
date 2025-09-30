@@ -7,13 +7,19 @@ import json
 from termcolor import cprint
 from pathlib import Path
 
+# === Local services
 from services.neo4j import Neo4jService
 
-Neo4jService.initialize()
+# -----------------------------------------------------------------------------
+# Config
+# -----------------------------------------------------------------------------
 HERE = Path(__file__).parent
+
 # -----------------------------------------------------------------------------
 # Ingestion
 # -----------------------------------------------------------------------------
+Neo4jService.initialize()
+
 def ingest() -> None:
 
     # Constraints
@@ -30,7 +36,6 @@ def ingest() -> None:
     Neo4jService.show_vector_indexes()
 
     # Data
-    
     with open(HERE / "data/friends/friends.json", "r", encoding="utf-8") as f:
         data = json.load(f)
 
