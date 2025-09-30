@@ -3,12 +3,7 @@ Friends KG — Minimal Gradio UI
 Two inputs + one map. Minimal controls, with send buttons.
 Run: python frontend.py
 """
-import os, json
 import gradio as gr
-import folium
-from dotenv import load_dotenv
-from termcolor import cprint
-from pprint import pprint
 from urllib.parse import quote
 from pathlib import Path
 
