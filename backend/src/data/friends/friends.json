@@ -1,0 +1,398 @@
+{
+  "people": [
+    {
+      "name": "Iria",
+      "age": 27,
+      "gender": "female",
+      "education": "Physics",
+      "extra_text": "Iria has blue eyes and long brunette and wavy hair. She likes to paint her nails in red or purple colours. She usually wears long earrings.",
+      "latitude": 40.45800,
+      "longitude": -3.71158
+    },
+    {
+      "name": "Guillermo",
+      "age": 26,
+      "gender": "male",
+      "education": "Industrial Engineering",
+      "extra_text": "Guillermo has brown eyes and short hair. He has a very fancy shirt that he takes to all important events. He shaved his head this summer.",
+      "latitude": 40.43200,
+      "longitude": -3.69000
+    },
+    {
+      "name": "Claudia",
+      "age": 26,
+      "gender": "female",
+      "education": "Physics",
+      "extra_text": "Claudia has long curly hair with babylights. She's petite and likes to wear hippie-style clothes.",
+      "latitude": 40.45400,
+      "longitude": -3.71160
+    },
+    {
+      "name": "Paula",
+      "age": 25,
+      "gender": "female",
+      "education": "Computer Engineering",
+      "extra_text": "Paula short hair in a wolfcut style. She wears long and wide pants and sneakers to the laboratory.",
+      "latitude": 40.43000,
+      "longitude": -3.67000
+    },
+    {
+      "name": "Marina",
+      "age": 27,
+      "gender": "female",
+      "education": "Physics",
+      "extra_text": "Marina has brown eyes and very long straight brunette hair. She usually wears scarfs to style her hair and long skirts.",
+      "latitude": 40.46000,
+      "longitude": -3.615745
+    },
+    {
+      "name": "Manuel",
+      "age": 27,
+      "gender": "male",
+      "education": "Arts",
+      "extra_text": "Manuel has short curly hair. He loves horror movies.",
+      "latitude": 40.46400,
+      "longitude": -3.617745
+    },
+    {
+      "name": "Xavier",
+      "age": 27,
+      "gender": "male",
+      "education": "Physics",
+      "extra_text": "",
+      "latitude": 40.43400,
+      "longitude": -3.71132
+    },
+    {
+      "name": "Juan",
+      "age": 27,
+      "gender": "male",
+      "education": "Physics",
+      "extra_text": "",
+      "latitude": 40.43800,
+      "longitude": -3.71172
+    },
+    {
+      "name": "Esteban",
+      "age": 29,
+      "gender": "male",
+      "education": "Physics",
+      "extra_text": "",
+      "latitude": 40.44200,
+      "longitude": -3.71179
+    },
+    {
+      "name": "Iciar",
+      "age": 26,
+      "gender": "female",
+      "education": "Physics",
+      "extra_text": "",
+      "latitude": 40.44600,
+      "longitude": -3.71129
+    },
+    {
+      "name": "Aarón",
+      "age": 27,
+      "gender": "male",
+      "education": "Physics",
+      "extra_text": "",
+      "latitude": 40.45000,
+      "longitude": -3.71121
+    }
+  ],
+  "companies": [
+    {
+      "name": "Lumon",
+      "industry": "Engineering",
+      "extra_text": "Lumon Group is a holding company that promotes technological progress. It includes Lumon, one of the main global defense, air traffic and space companies; and Minsait, leading digital transformation and information technologies in Spain and Latin America.",
+      "latitude": 40.533873,
+      "longitude": -3.630539
+    },
+    {
+      "name": "CMT",
+      "industry": "Scientific Research",
+      "extra_text": "The CMT (Centro de Investigaciones Energéticas, Medioambientales y Tecnológicas) is a public research organization attached to the Ministry of Science, Innovation and Universities through the General Secretariat for Research. It occupies an intermediate position in the chain that runs from the creation of basic knowledge to industrial application, so its activities always seek to serve as a bridge between R&D&I and objectives of social interest.",
+      "latitude": 40.493938,
+      "longitude": -3.728925
+    },
+    {
+      "name": "CEBIME",
+      "industry": "Scientific Research",
+      "extra_text": "The CEBIME is a joint research centre, hosting researchers belonging to the Spanish Higher Research Council (CSIC) and the Universidad Autónoma de Madrid (UAM). Founded in 1975, the CEBIME is one of the largest Spanish multidisciplinary research centres in biomedicine, with expertise in molecular biology, biochemistry, genetics and genomics in several research areas: immunology, virology and microbiology, neuroscience, and cell and developmental biology.",
+      "latitude": 40.499613,
+      "longitude": -3.690136
+    },
+    {
+      "name": "Instagram",
+      "industry": "Social Media",
+      "extra_text": "Instagram is a free mobile app for photo and short-form video sharing, owned by Meta, where users can upload media, edit it with filters, add hashtags, and tag locations. The platform allows users to share content with followers, engage with posts through likes and comments, and discover new content through personalized recommendations.",
+      "latitude": 40.492321,
+      "longitude": -3.701249
+    },
+    {
+      "name": "Waytronics",
+      "industry": "Consulting Services",
+      "extra_text": "",
+      "latitude": 40.492321,
+      "longitude": -3.691249
+    },
+    {
+      "name": "Accenture",
+      "industry": "Consulting Services",
+      "extra_text": "",
+      "latitude": 40.491321,
+      "longitude": -3.701249
+    }
+  ],
+  "person_person_relations": [
+    {
+      "start_person": "Iria",
+      "end_person": "Guillermo",
+      "knows_from": "work",
+      "text": "Guillermo and Iria work together in the same project with AI Agents."
+    },
+    {
+      "start_person": "Iria",
+      "end_person": "Claudia",
+      "knows_from": "university",
+      "text": "Iria and Claudia now each other because they went to University together and liked going camping."
+    },
+    {
+      "start_person": "Iria",
+      "end_person": "Paula",
+      "knows_from": "work",
+      "text": "Paula is helping Iria with the project she is working on."
+    },
+    {
+      "start_person": "Iria",
+      "end_person": "Marina",
+      "knows_from": "university",
+      "text": "Marina was Iria best friend in University, now they see each other every weekend."
+    },
+    {
+      "start_person": "Iria",
+      "end_person": "Xavier",
+      "knows_from": "university",
+      "text": "University friends."
+    },
+    {
+      "start_person": "Iria",
+      "end_person": "Juan",
+      "knows_from": "university",
+      "text": "University friends."
+    },
+    {
+      "start_person": "Iria",
+      "end_person": "Esteban",
+      "knows_from": "university",
+      "text": "University friends."
+    },
+    {
+      "start_person": "Iria",
+      "end_person": "Iciar",
+      "knows_from": "university",
+      "text": "University friends."
+    },
+    {
+      "start_person": "Iria",
+      "end_person": "Aarón",
+      "knows_from": "university",
+      "text": "University friends."
+    },
+    {
+      "start_person": "Guillermo",
+      "end_person": "Paula",
+      "knows_from": "work",
+      "text": "Paula is helping Guillermo with the project he is working on."
+    },
+    {
+      "start_person": "Claudia",
+      "end_person": "Marina",
+      "knows_from": "university",
+      "text": "Marina and Claudia go to Chinese academy together, although they met at uni."
+    },
+    {
+      "start_person": "Claudia",
+      "end_person": "Xavier",
+      "knows_from": "university",
+      "text": "University friends."
+    },
+    {
+      "start_person": "Claudia",
+      "end_person": "Juan",
+      "knows_from": "university",
+      "text": "University friends."
+    },
+    {
+      "start_person": "Claudia",
+      "end_person": "Esteban",
+      "knows_from": "university",
+      "text": "University friends."
+    },
+    {
+      "start_person": "Claudia",
+      "end_person": "Iciar",
+      "knows_from": "university",
+      "text": "University friends."
+    },
+    {
+      "start_person": "Claudia",
+      "end_person": "Aarón",
+      "knows_from": "university",
+      "text": "University friends."
+    },
+    {
+      "start_person": "Marina",
+      "end_person": "Manuel",
+      "knows_from": "school",
+      "text": "Marina and Manuel are in a relationship."
+    },
+    {
+      "start_person": "Marina",
+      "end_person": "Xavier",
+      "knows_from": "university",
+      "text": "University friends."
+    },
+    {
+      "start_person": "Marina",
+      "end_person": "Juan",
+      "knows_from": "university",
+      "text": "University friends."
+    },
+    {
+      "start_person": "Marina",
+      "end_person": "Esteban",
+      "knows_from": "university",
+      "text": "University friends."
+    },
+    {
+      "start_person": "Marina",
+      "end_person": "Iciar",
+      "knows_from": "university",
+      "text": "University friends."
+    },
+    {
+      "start_person": "Marina",
+      "end_person": "Aarón",
+      "knows_from": "university",
+      "text": "University friends."
+    },
+    {
+      "start_person": "Xavier",
+      "end_person": "Juan",
+      "knows_from": "university",
+      "text": "University friends."
+    },
+    {
+      "start_person": "Xavier",
+      "end_person": "Esteban",
+      "knows_from": "university",
+      "text": "University friends."
+    },
+    {
+      "start_person": "Xavier",
+      "end_person": "Iciar",
+      "knows_from": "university",
+      "text": "University friends."
+    },
+    {
+      "start_person": "Xavier",
+      "end_person": "Aarón",
+      "knows_from": "university",
+      "text": "University friends."
+    },
+    {
+      "start_person": "Juan",
+      "end_person": "Esteban",
+      "knows_from": "university",
+      "text": "University friends."
+    },
+    {
+      "start_person": "Juan",
+      "end_person": "Iciar",
+      "knows_from": "university",
+      "text": "University friends."
+    },
+    {
+      "start_person": "Juan",
+      "end_person": "Aarón",
+      "knows_from": "university",
+      "text": "University friends."
+    },
+    {
+      "start_person": "Esteban",
+      "end_person": "Iciar",
+      "knows_from": "university",
+      "text": "University friends."
+    },
+    {
+      "start_person": "Esteban",
+      "end_person": "Aarón",
+      "knows_from": "university",
+      "text": "University friends."
+    },
+    {
+      "start_person": "Iciar",
+      "end_person": "Aarón",
+      "knows_from": "university",
+      "text": "University friends."
+    }
+  ],
+  "person_company_relations": [
+    {
+      "person": "Iria",
+      "company": "Lumon",
+      "since": 2025
+    },
+    {
+      "person": "Guillermo",
+      "company": "Lumon",
+      "since": 2023
+    },
+    {
+      "person": "Claudia",
+      "company": "CMT",
+      "since": 2023
+    },
+    {
+      "person": "Paula",
+      "company": "Lumon",
+      "since": 2024
+    },
+    {
+      "person": "Marina",
+      "company": "CEBIME",
+      "since": 2025
+    },
+    {
+      "person": "Manuel",
+      "company": "Instagram",
+      "since": 2025
+    },
+    {
+      "person": "Xavier",
+      "company": "Lumon",
+      "since": 2023
+    },
+    {
+      "person": "Juan",
+      "company": "Waytronics",
+      "since": 2023
+    },
+    {
+      "person": "Esteban",
+      "company": "Accenture",
+      "since": 2024
+    },
+    {
+      "person": "Iciar",
+      "company": "Accenture",
+      "since": 2025
+    },
+    {
+      "person": "Aarón",
+      "company": "Lumon",
+      "since": 2023
+    }
+  ]
+}

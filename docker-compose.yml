@@ -47,3 +47,29 @@ services:
       PORT: "${FRONTEND_PORT:-3000}"
       LANGGRAPH_API_URL: http://backend:${BACKEND_PORT:-2024}
     #volumes: # No volumes: image is fully self-contained
+
+  neo4j:
+    image: neo4j:5.23-community
+    container_name: neo4j
+    ports:
+      - "${NEO4J_HTTP_PORT}:${NEO4J_HTTP_PORT}"   # Browser (e.g. 7474:7474)
+      - "${NEO4J_URI_PORT}:${NEO4J_URI_PORT}"     # Bolt (e.g. 7687:7687)
+    environment:
+      - NEO4J_AUTH=${NEO4J_USER}/${NEO4J_PASSWORD}
+      - NEO4J_PLUGINS=["apoc"]
+    volumes:
+      - neo4j_data:/data
+
+  neodash:
+    image: neo4jlabs/neodash:latest
+    container_name: neodash
+    restart: unless-stopped
+    ports:
+      - "${NEODASH_HTTP_PORT}:${NEODASH_HTTP_PORT}"   # Browser (e.g. 5005:5005)
+    environment:
+      NODE_ENV: production
+    depends_on:
+      - neo4j
+
+volumes:
+  neo4j_data:

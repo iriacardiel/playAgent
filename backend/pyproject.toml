@@ -30,7 +30,13 @@ dependencies = [
     "faiss-cpu",
     "chromadb",
     "ollama",
-    "langchain-openai"
+    "langchain-openai",
+    "folium",
+    "gradio",
+    "langchain-google-vertexai",
+    "langchain-neo4j",
+    "neo4j"
+
 ]
 
 
