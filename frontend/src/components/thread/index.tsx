@@ -38,6 +38,7 @@ import ThreadHistory from "./history";
 import { AssistantMessage, AssistantMessageLoading } from "./messages/ai";
 import { HumanMessage } from "./messages/human";
 import { TooltipIconButton } from "./tooltip-icon-button";
+import { RightPanel } from "@/components/ui/right-panel";
 
 function StickyToBottomContent(props: {
   content: ReactNode;
@@ -542,6 +543,38 @@ export function Thread() {
           </div>
         </div>
       </div>
+      
+      <div className="relative hidden lg:flex">
+      <motion.div
+          className="absolute z-20 h-full overflow-hidden border-r bg-background"
+          style={{ width: 300 }}
+          animate={
+            isLargeScreen
+              ? { x: chatHistoryOpen ? 0 : -300 }
+              : { x: chatHistoryOpen ? 0 : -300 }
+          }
+          initial={{ x: -300 }}
+          transition={
+            isLargeScreen
+              ? { type: "spring", stiffness: 300, damping: 30 }
+              : { duration: 0 }
+          }
+        >
+          <div
+            className="relative h-full"
+            style={{ width: 300 }}
+          >
+            {/* Right Map Panel */}
+            <RightPanel>
+              <iframe
+                src="/friends_map_folium.html"
+                className="w-full h-full border-0"
+                title="Map View"
+              />
+            </RightPanel>
+          </div>
+        </motion.div>
+      </div> 
     </div>
   );
 }
