@@ -1,4 +1,3 @@
-.env
 .bash.config.local
 package-lock.json
 .venv
@@ -7,3 +6,6 @@ ollama-custom/.ollama/**
 tmp/**
 
 agent-stack-latest.tar
+env/
+.vscode/
+**/.env

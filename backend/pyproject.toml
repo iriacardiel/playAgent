@@ -37,6 +37,9 @@ dependencies = [
     "langchain-neo4j",
     "neo4j"
 
+    "langchain-openai",
+    "langchain-google-vertexai>=2.1.2",
+    "google-cloud-aiplatform>=1.114.0",
 ]
 
 
