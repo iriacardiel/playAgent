@@ -11,6 +11,7 @@ from langgraph.prebuilt import ToolNode, tools_condition
 
 from agent.prompts import get_system_prompt
 from agent.prompts import get_judge_prompt
+from agent.judge_evaluator import JudgeNode
 from agent.state import AgentState
 from agent.tools_and_schemas import (
     get_list_of_tasks,
@@ -65,15 +66,18 @@ class Agent:
         # --------------------------
         # BUILD GRAPH
         # --------------------------
+
         builder = StateGraph(AgentState)
         builder.add_node("LLM_assistant", self.LLM_node)
-        builder.add_node("judge", judge_node)
+        builder.add_node("judge", self.judge_node)
         builder.add_node("tools", ToolNode(self.tools, handle_tool_errors=False))
 
-        builder.add_edge(START, "LLM_assistant")
-        builder.add_edge("LLM_assistant", "judge")
+        builder.add_edge(START, "judge")
+        builder.add_edge("judge", "LLM_assistant") # Conditional
         builder.add_conditional_edges(
-            "LLM_assistant", tools_condition, path_map=["tools", "__end__"]) # TODO This should be judge not llm_assistant
+            "LLM_assistant", tools_condition, path_map=["tools", "__end__"]
+        )
+        builder.add_edge("LLM_assistant", "judge")
 
         # --------------------------
         # COMPILE GRAPH
@@ -107,6 +111,25 @@ class Agent:
         log_token_usage(ai_message, messages_list)
         
         return {"messages": [ai_message]}
+    
+    # Judge Node
+    def judge_node(self, state: AgentState):
+        """LLM Assistant Node - Handles LLM interactions."""
+        input_text = self.filtermessages( 1, state["messages"]).content
+
+        prompt = [
+                SystemMessage(content=get_judge_prompt(state.get("short_term_memories", []), cdu = "main")),
+            ] + input_text
+
+        response = llm.invoke(prompt)
+        print(response)
+        is_safe = response.strip().upper() == "SAFE"
+
+        if is_safe:
+            return {}
+        else:
+            output = "⚠️ Content blocked due to safety concerns."
+            return  {"messages": [AIMessage(output)]}
 
     # --------------------------
     # AGENT UTILS
@@ -164,25 +187,6 @@ if Settings.MODEL_SERVER == "CLAUDE":
         stop=None,
     )
 
-
-# --------------------------
-# Judge
-# --------------------------
-def judge_content(input_text: str) -> bool:
-    """Returns True if content is safe, False if it violates rules."""
-    prompt = llm_input = [
-            SystemMessage(content=get_judge_prompt(state.get("short_term_memories", []), cdu = "main")),
-        ] + messages_list
-    response = llm.invoke(prompt)
-    return response.strip().upper() == "SAFE"
-
-
-def judge_node(state):
-    output = state["output"]
-    if judge_content(output):
-        return {"output": output}
-    else:
-        return {"output": "⚠️ Content blocked due to safety concerns."}
 
 # --------------------------
 # TOOLS
