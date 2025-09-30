@@ -14,6 +14,7 @@ import numpy as np
 from termcolor import colored, cprint
 
 from config import Settings
+from services.neo4j import Neo4jService
 from services.memory.chromadb_store import ChromaVectorMemoryStore
 from agent.state import AgentState
 
@@ -258,6 +259,45 @@ def check_current_time(
         "messages": [tool_message],
         "tools_used": ["check_current_time"],
     }
+
+    return Command(update=update, goto="LLM_assistant")
+
+
+@tool
+def get_social_data(
+    question: str, tool_call_id: Annotated[str, InjectedToolCallId]
+) -> Command:
+    """Obtain current social data by querying a knowledge graph database.
+
+    input: question
+    output: Answer to the question based on the data in the graph database.
+    """
+    try:
+        print(colored("Executing cypher query synchronously...", "blue"))
+
+        # Use direct execution to completely bypass any streaming mechanisms
+        out =Neo4jService.get_cypher_chain().invoke(question)
+        print(out)
+        print(type(out))
+        response = out.get("result","")
+        steps = out.get("intermediate_steps") or []
+        if steps:
+            cypher = steps[0].get("query") 
+            context = steps[1].get("context")
+            cprint(response, "cyan")
+            print("#"*60)
+            print()
+
+        print(colored(f"CypherChain response completed: {response[:100]}...", "green"))
+
+    except Exception as e:
+        print(colored(f"Error in cypher execution: {e}", "red"))
+        response = f"There was an error in get_battlefield_data tool: {e}"
+
+    # Return the COMPLETE result as a tool message
+    tool_message = ToolMessage(json.dumps(out), tool_call_id=tool_call_id)
+
+    update = {"messages": [tool_message], "tools_used": ["get_battlefield_data"]}
 
     return Command(update=update, goto="LLM_assistant")
 

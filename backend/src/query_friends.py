@@ -43,9 +43,6 @@ if MODEL_SERVER == "VERTEX":
   )
   
 
-
-Neo4jService.initialize()
-
 # ----------------------------------------------------
 # Vector Search with predefined queries:
 #  user query -> predefined CQL query -> context -> LLM -> answer
@@ -113,6 +110,8 @@ def generative_CQL_search_QA(query):
   
 # KG RAG Search
 if __name__ == "__main__":
+  
+  Neo4jService.initialize()
   
   vector_search_QA(query = "Does any girl have short hair?", 
                    index = "person_node_idx", 

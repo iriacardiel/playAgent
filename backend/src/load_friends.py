@@ -18,7 +18,6 @@ HERE = Path(__file__).parent
 # -----------------------------------------------------------------------------
 # Ingestion
 # -----------------------------------------------------------------------------
-Neo4jService.initialize()
 
 def ingest() -> None:
 
@@ -113,6 +112,7 @@ def ingest() -> None:
 
 def main() -> None:
     try:
+        Neo4jService.initialize()
         ingest()
     except Exception as e:
         cprint(f"\nERROR: {e}", "red")
