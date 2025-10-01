@@ -177,40 +177,15 @@ class Agent:
     
     # Judge Node
     def judge_node(self, state: AgentState):
-        """Judge Node - Evaluates message content for safety."""
-        # Get the last message content to evaluate
-        last_messages = self.filtermessages(1, state["messages"])
-        if not last_messages:
-            return {}
-        
-        # Extract content from the last message 
-        # NOTE: No tengo claro que tipo de mensaje es, si str o object. A simplificar una vez aclarado
-        last_message = last_messages[-1]
-        if hasattr(last_message, 'content'):
-            message_content = last_message.content
-        else:
-            message_content = str(last_message)
+        """LLM Assistant Node - Handles LLM interactions."""
+        input_text = self.filtermessages( 1, state["messages"])
 
-        # Create judge prompt (without embedding content)
-        judge_prompt = get_judge_prompt(cdu="main")
-        
-        #NOTE: el mensaje a evaluar se pasa sin indicar el tipo de mensaje
-        # puede ser interesante diferenciar entre HumanMessage o AIMessage.
         prompt = [
-            SystemMessage(content=judge_prompt),
-            message_content
-        ]
+                SystemMessage(content=get_judge_prompt(state.get("short_term_memories", []), cdu = "main")),
+            ] + input_text
 
-        response = self.llm.invoke(prompt)
-        print(f"Judge response: {response}")
-        
-        # Extract content from response if it's a message object
-        if hasattr(response, 'content'):
-            response_content = response.content
-        else:
-            response_content = str(response)
-            
-        is_safe = response_content.strip().upper() == "SAFE"
+        response = llm.invoke(prompt).text()
+        is_safe = response.strip().upper() == "SAFE"
 
         if is_safe:
             return {}
