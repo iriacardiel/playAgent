@@ -21,21 +21,8 @@ HERE = Path(__file__).parent
 
 def ingest() -> None:
 
-    # Constraints
-    Neo4jService.create_constraint(node_label="Person",node_unique_key="uuid")
-    Neo4jService.create_constraint(node_label="Company",node_unique_key="uuid")
-        
-    # Clean up graph
-    Neo4jService.reset_graph()  
-        
-    # Vector indexes
-    Neo4jService.create_vector_index(index_name="person_node_idx", node_label="Person")
-    Neo4jService.create_vector_index(index_name="company_node_idx", node_label="Company")
-    Neo4jService.create_vector_index(index_name="know_relationship_idx", relation_type="KNOWS")
-    Neo4jService.show_vector_indexes()
-
     # Data
-    with open(HERE / "data/friends/friends.json", "r", encoding="utf-8") as f:
+    with open(HERE / "data/friends/extra_friends.json", "r", encoding="utf-8") as f:
         data = json.load(f)
 
     # People

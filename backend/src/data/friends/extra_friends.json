@@ -1,0 +1,25 @@
+{
+  "people": [
+    {
+      "name": "Laura",
+      "age": 27,
+      "gender": "female",
+      "education": "Arts",
+      "extra_text": "",
+      "latitude": 40.46800,
+      "longitude": -3.71158
+    },
+    {
+      "name": "María",
+      "age": 26,
+      "gender": "female",
+      "education": "Arts",
+      "extra_text": "",
+      "latitude": 40.46200,
+      "longitude": -3.79000
+    }
+  ],
+  "companies": [],
+  "person_person_relations": [],
+  "person_company_relations": []
+}
