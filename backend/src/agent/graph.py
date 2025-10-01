@@ -118,6 +118,7 @@ class Agent:
         
         builder.add_node("LLM_assistant", self.LLM_node)
         builder.add_node("judge", self.judge_node)
+        builder.add_node("judge_final", self.judge_node)
         builder.add_node("tools", ToolNode(self.tools, handle_tool_errors=False))
 
         builder.add_edge(START, "judge")
@@ -125,11 +126,11 @@ class Agent:
             "judge", self.judge_condition, path_map=["__end__", "LLM_assistant"]
         )
         builder.add_conditional_edges(
-            "LLM_assistant", tools_condition, path_map=["tools", "judge"]
+            "LLM_assistant", tools_condition, path_map=["tools", "judge_final"]
         )
-        builder.add_edge("tools", "judge")
+        builder.add_edge("tools", "judge_final")
         builder.add_conditional_edges(
-            "judge", self.judge_condition, path_map=["__end__", "__end__"]
+            "judge_final", self.judge_condition, path_map=["__end__", "__end__"]
         )
 
         # --------------------------
