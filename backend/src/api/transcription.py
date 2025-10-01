@@ -12,7 +12,7 @@ from services.stt import STTModel
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
-cprint(f"Using STT Model: {Settings.STT_MODEL} on device: {Settings.STT_DEVICE}", "red")
+#cprint(f"Using STT Model: {Settings.STT_MODEL} on device: {Settings.STT_DEVICE}", "red")
 
 stt_model = STTModel(
     model_id=Settings.STT_MODEL,

@@ -8,15 +8,12 @@ First run:
 
 from datetime import datetime
 import uuid
-import faiss
 import chromadb
 import numpy as np
-import json
 import requests
 from pathlib import Path
 from termcolor import cprint
 import os
-#import ollama 
 
 def get_embedding_ollama(text: str, model="nomic-embed-text") -> list[float]:
     ollama_host = os.environ.get("OLLAMA_HOST", "http://localhost:11434") # IN DOCKER IT IS "http://ollama:11434"

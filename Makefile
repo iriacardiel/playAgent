@@ -12,7 +12,7 @@ dev-frontend:
 
 dev-backend:
 	@echo "Starting backend development server..."
-	@cd backend && exec langgraph dev --config ./langgraph.json --allow-blocking --no-browser
+	@cd backend && exec langgraph dev --config ./langgraph.json --allow-blocking --no-browser --no-reload
 
 dev-backend-multi:
 	@echo "Starting backend development server..."
