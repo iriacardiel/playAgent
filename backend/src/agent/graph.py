@@ -74,14 +74,14 @@ class Agent:
 
         builder.add_edge(START, "judge")
         builder.add_conditional_edges(
-            "judge", self.judge_condition, path_map=["__end__", "LLM_assistant"]
+            "judge", self.judge_condition, path_map={"blocked": "__end__", "safe": "LLM_assistant"}
         )
         builder.add_conditional_edges(
             "LLM_assistant", tools_condition, path_map=["tools", "judge_final"]
         )
         builder.add_edge("tools", "judge_final")
         builder.add_conditional_edges(
-            "judge_final", self.judge_condition, path_map=["__end__", "__end__"]
+            "judge_final", self.judge_condition, path_map={"blocked": "__end__", "safe": "__end__"}
         )
 
         # --------------------------
@@ -137,22 +137,15 @@ class Agent:
         if not last_messages:
             return {}
         
-        # Extract content from the last message 
-        # NOTE: No tengo claro que tipo de mensaje es, si str o object. A simplificar una vez aclarado
+        # Get the last message to evaluate
         last_message = last_messages[-1]
-        if hasattr(last_message, 'content'):
-            message_content = last_message.content
-        else:
-            message_content = str(last_message)
 
-        # Create judge prompt (without embedding content)
+        # Create judge prompt
         judge_prompt = get_judge_prompt(cdu="main")
         
-        #NOTE: el mensaje a evaluar se pasa sin indicar el tipo de mensaje
-        # puede ser interesante diferenciar entre HumanMessage o AIMessage.
         prompt = [
             SystemMessage(content=judge_prompt),
-            message_content
+            last_message
         ]
 
         response = self.llm.invoke(prompt)
