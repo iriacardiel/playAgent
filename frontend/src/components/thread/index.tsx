@@ -38,7 +38,7 @@ import ThreadHistory from "./history";
 import { AssistantMessage, AssistantMessageLoading } from "./messages/ai";
 import { HumanMessage } from "./messages/human";
 import { TooltipIconButton } from "./tooltip-icon-button";
-import { RightPanel } from "@/components/ui/right-panel";
+import { MapPanel } from "@/components/ui/map-panel";
 
 function StickyToBottomContent(props: {
   content: ReactNode;
@@ -565,13 +565,13 @@ export function Thread() {
             style={{ width: 300 }}
           >
             {/* Right Map Panel */}
-            <RightPanel>
+            <MapPanel>
               <iframe
                 src="/friends_map_folium.html"
                 className="w-full h-full border-0"
                 title="Map View"
               />
-            </RightPanel>
+            </MapPanel>
           </div>
         </motion.div>
       </div> 
