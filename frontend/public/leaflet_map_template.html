@@ -80,7 +80,7 @@
       console.log("🔄 Refreshing map data at", new Date().toLocaleTimeString());
 
       try {
-        const res = await fetch(`${backend}/api/map_info`, { method: 'POST', cache: 'no-store' });
+        const res = await fetch(`${backend}/api/map_features`, { method: 'POST', cache: 'no-store' });
         if (!res.ok) throw new Error('Failed to load map data');
         const { nodes, edges } = await res.json();
 
