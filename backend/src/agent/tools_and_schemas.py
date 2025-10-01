@@ -291,6 +291,7 @@ def get_social_data(
         print(colored(f"CypherChain response completed: {response[:100]}...", "green"))
 
     except Exception as e:
+        out = {}
         print(colored(f"Error in cypher execution: {e}", "red"))
         response = f"There was an error in get_battlefield_data tool: {e}"
 

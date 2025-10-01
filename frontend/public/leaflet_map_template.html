@@ -1,16 +1,17 @@
-<!-- add this in <head> -->
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
-<style>
-  html, body, #map { height: 100%; margin: 0; }  /* critical: gives the map a height */
-  .popup-name { font-weight: 600; margin-bottom: 4px; }
-  .legend {
-    position: absolute; z-index: 1000; bottom: 16px; left: 16px;
-    background: white; padding: 8px 10px; border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0,0,0,.15);
-    font: 14px/1.2 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-  }
-  .legend .badge { display:inline-block; width:12px; height:12px; border-radius:3px; margin-right:6px; background:#eee; }
-</style>
+<head>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+  <style>
+    html, body, #map { height: 100%; margin: 0; }  /* critical: gives the map a height */
+    .popup-name { font-weight: 600; margin-bottom: 4px; }
+    .legend {
+      position: absolute; z-index: 1000; bottom: 16px; left: 16px;
+      background: white; padding: 8px 10px; border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,.15);
+      font: 14px/1.2 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    }
+    .legend .badge { display:inline-block; width:20px; height:20px; margin-right:6px; border-radius:3px; }
+    .legend img { width: 20px; height: 20px; vertical-align: middle; }
+  </style>
 </head>
 <body>
   <div id="map"></div>
@@ -34,16 +35,37 @@
       attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
 
-    const labelColors = { Person: '#2e7d32', Company: '#1565c0' };
+    // Custom icons for each label type
+    const icons = {
+      Person: L.icon({
+        iconUrl: '/person.png', // Path to the person icon
+        iconSize: [32, 32],            // Adjust size as needed
+        iconAnchor: [16, 32],          // Anchor point for the icon
+        popupAnchor: [0, -32]          // Popup position relative to the icon
+      }),
+      Company: L.icon({
+        iconUrl: '/company.png', // Path to the company icon
+        iconSize: [32, 32],             // Adjust size as needed
+        iconAnchor: [16, 32],           // Anchor point for the icon
+        popupAnchor: [0, -32]           // Popup position relative to the icon
+      })
+    };
 
-    function nodeStyle(f) {
-      const labels = (f.properties?.labels) || [];
-      const primary = labels[0] || 'Other';
-      const color = labelColors[primary] || '#6d4c41';
-      return { radius: 7, weight: 2, opacity: 1, color, fillOpacity: 0.15, fillColor: color, pane: 'nodes' };
+    // Function to set node marker style based on the label
+    function nodeMarker(feature, latlng) {
+      const labels = (feature.properties?.labels) || [];
+      const primary = labels[0] || 'Other'; // Default to 'Other' if no label exists
+
+      // Use the appropriate icon for the label, default to 'Person' if label doesn't match
+      const icon = icons[primary] || icons['Person'];
+
+      return L.marker(latlng, { icon: icon, pane: 'nodes' });
     }
-    function nodeMarker(feature, latlng) { return L.circleMarker(latlng, nodeStyle(feature)); }
-    function edgeStyle() { return { color: '#7a7a7a', weight: 1.5, opacity: 0.7, pane: 'edges' }; }
+
+    // Style for edges
+    function edgeStyle() {
+      return { color: '#7a7a7a', weight: 1.5, opacity: 0.7, pane: 'edges' };
+    }
 
     const nodesLayer = L.geoJSON(null, {
       pointToLayer: nodeMarker,
@@ -65,12 +87,13 @@
       }
     });
 
+    // Updated legend to use images instead of colors
     const legend = L.control({ position: 'bottomleft' });
     legend.onAdd = () => {
       const div = L.DomUtil.create('div', 'legend');
       div.innerHTML = `
-        <div><span class="badge" style="background:#2e7d32;"></span>Person</div>
-        <div><span class="badge" style="background:#1565c0;"></span>Company</div>
+        <div><img src="/person.png" alt="Person Icon"> Person</div>
+        <div><img src="/company.png" alt="Company Icon"> Company</div>
       `;
       return div;
     };
@@ -93,13 +116,13 @@
       } catch (err) {
         console.error('Refresh error:', err);
       }
-  }
+    }
 
-  // initial load
-  refreshData();
+    // initial load
+    refreshData();
 
-  // repeat every 30s
-  setInterval(refreshData, 5000);
+    // repeat every 5s
+    setInterval(refreshData, 5000);
 
   </script>
 </body>
