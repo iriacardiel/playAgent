@@ -11,7 +11,6 @@ from langgraph.prebuilt import ToolNode, tools_condition
 
 from agent.prompts import get_system_prompt
 from agent.prompts import get_judge_prompt
-from agent.judge_evaluator import JudgeNode
 from agent.state import AgentState
 from agent.tools_and_schemas import (
     get_list_of_tasks,
@@ -122,16 +121,33 @@ class Agent:
         builder.add_node("tools", ToolNode(self.tools, handle_tool_errors=False))
 
         builder.add_edge(START, "judge")
-        builder.add_edge("judge", "LLM_assistant") # TODO: Should be a Conditional edge
         builder.add_conditional_edges(
-            "LLM_assistant", tools_condition, path_map=["tools", "__end__"]
+            "judge", self.judge_condition, path_map=["__end__", "LLM_assistant"]
         )
-        builder.add_edge("LLM_assistant", "judge")
+        builder.add_conditional_edges(
+            "LLM_assistant", tools_condition, path_map=["tools", "judge"]
+        )
+        builder.add_edge("tools", "judge")
+        builder.add_conditional_edges(
+            "judge", self.judge_condition, path_map=["__end__", "__end__"]
+        )
 
         # --------------------------
         # COMPILE GRAPH
         # --------------------------
         return builder.compile(checkpointer=self.checkpointer, debug=False)
+
+    # --------------------------
+    # CONDITIONS
+    # --------------------------
+    def judge_condition(self, state: AgentState):
+        """Determine next step based on judge result."""
+        # Check if the last message is a safety warning
+        if state["messages"]:
+            last_message = state["messages"][-1]
+            if hasattr(last_message, 'content') and "⚠️ Content blocked" in last_message.content:
+                return "blocked"  # End the conversation
+        return "safe"  # Continue to next step
 
     # --------------------------
     # NODES
@@ -161,23 +177,47 @@ class Agent:
     
     # Judge Node
     def judge_node(self, state: AgentState):
-        """LLM Assistant Node - Handles LLM interactions."""
-        input_text = self.filtermessages( 1, state["messages"]).content
+        """Judge Node - Evaluates message content for safety."""
+        # Get the last message content to evaluate
+        last_messages = self.filtermessages(1, state["messages"])
+        if not last_messages:
+            return {}
+        
+        # Extract content from the last message 
+        # NOTE: No tengo claro que tipo de mensaje es, si str o object. A simplificar una vez aclarado
+        last_message = last_messages[-1]
+        if hasattr(last_message, 'content'):
+            message_content = last_message.content
+        else:
+            message_content = str(last_message)
 
+        # Create judge prompt (without embedding content)
+        judge_prompt = get_judge_prompt(cdu="main")
+        
+        #NOTE: el mensaje a evaluar se pasa sin indicar el tipo de mensaje
+        # puede ser interesante diferenciar entre HumanMessage o AIMessage.
         prompt = [
-                SystemMessage(content=get_judge_prompt(state.get("short_term_memories", []), cdu = "main")),
-            ] + input_text
+            SystemMessage(content=judge_prompt),
+            message_content
+        ]
 
-        response = llm.invoke(prompt)
-        print(response)
-        is_safe = response.strip().upper() == "SAFE"
+        response = self.llm.invoke(prompt)
+        print(f"Judge response: {response}")
+        
+        # Extract content from response if it's a message object
+        if hasattr(response, 'content'):
+            response_content = response.content
+        else:
+            response_content = str(response)
+            
+        is_safe = response_content.strip().upper() == "SAFE"
 
         if is_safe:
             return {}
         else:
-            # TODO: if not safe, ovewrite last message (if any) so that LLM response is not shown
+            # If not safe, replace the last message with a safety warning
             output = "⚠️ Content blocked due to safety concerns."
-            return  {"messages": [AIMessage(output)]}
+            return {"messages": [AIMessage(content=output)]}
 
     # --------------------------
     # AGENT UTILS
