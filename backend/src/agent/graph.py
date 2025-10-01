@@ -1,7 +1,8 @@
 import sqlite3
+import logging
 
 from langchain_core.language_models.chat_models import BaseChatModel
-from langchain_core.messages import AnyMessage, SystemMessage, AIMessage, HumanMessage
+from langchain_core.messages import AnyMessage, SystemMessage, AIMessage, HumanMessage, ToolMessage
 from langchain_ollama import ChatOllama
 from langchain_openai import ChatOpenAI
 from langchain_google_vertexai import ChatVertexAI
@@ -25,6 +26,9 @@ from termcolor import colored
 
 VERBOSE = bool(int(Settings.VERBOSE))
 
+# Set up logger
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 
 # --------------------------
@@ -77,12 +81,10 @@ class Agent:
             "judge", self.judge_condition, path_map={"blocked": "__end__", "safe": "LLM_assistant"}
         )
         builder.add_conditional_edges(
-            "LLM_assistant", tools_condition, path_map=["tools", "judge_final"]
+            "LLM_assistant", tools_condition, path_map={"tools": "tools", "__end__": "judge_final"}
         )
         builder.add_edge("tools", "judge_final")
-        builder.add_conditional_edges(
-            "judge_final", self.judge_condition, path_map={"blocked": "__end__", "safe": "__end__"}
-        )
+        builder.add_edge("judge_final", "__end__")
 
         # --------------------------
         # COMPILE GRAPH
@@ -135,21 +137,44 @@ class Agent:
         # Get the last message content to evaluate
         last_messages = self.filtermessages(1, state["messages"])
         if not last_messages:
+            logger.debug("No messages to judge")
             return {}
         
         # Get the last message to evaluate
         last_message = last_messages[-1]
+        logger.debug(f"Judging message type: {type(last_message)}")
+        logger.debug(f"Message content: {getattr(last_message, 'content', 'No content')[:100]}...")
+        
+        if isinstance(last_message, ToolMessage):
+            logger.debug("Skipping tool message")
+            return {}  
 
-        # Create judge prompt
         judge_prompt = get_judge_prompt(cdu="main")
+        
+        # Create a clean evaluation message with just the content
+        if hasattr(last_message, 'content'):
+            if isinstance(last_message.content, list):
+                content_text = ""
+                for item in last_message.content:
+                    if isinstance(item, dict) and 'text' in item:
+                        content_text += item['text']
+                    else:
+                        content_text += str(item)
+            else:
+                content_text = str(last_message.content)
+        else:
+            content_text = str(last_message)
+        
+        # Create evaluation message
+        evaluation_message = HumanMessage(content=content_text)
         
         prompt = [
             SystemMessage(content=judge_prompt),
-            last_message
+            evaluation_message
         ]
-
+        
         response = self.llm.invoke(prompt)
-        print(f"Judge response: {response}")
+        logger.debug(f"Judge response: {response}")
         
         # Extract content from response if it's a message object
         if hasattr(response, 'content'):
@@ -157,14 +182,27 @@ class Agent:
         else:
             response_content = str(response)
             
-        is_safe = response_content.strip().upper() == "SAFE"
+        logger.debug(f"Raw response content: '{response_content}'")
+        
+        # Handle empty or invalid responses
+        if not response_content or not response_content.strip():
+            logger.debug("Empty response from judge, defaulting to SAFE")
+            is_safe = True
+        else:
+            is_safe = response_content.strip().upper() == "SAFE"
+            
+        logger.debug(f"Is safe: {is_safe}")
 
         if is_safe:
+            logger.debug("Content is safe, returning empty state")
             return {}
         else:
             # If not safe, replace the last message with a safety warning
             output = "⚠️ Content blocked due to safety concerns."
-            return {"messages": [AIMessage(content=output)]}
+            logger.debug("Content is unsafe, replacing with safety warning")
+            # Replace the last message instead of adding a new one
+            new_messages = state["messages"][:-1] + [AIMessage(content=output)]
+            return {"messages": new_messages}
 
     # --------------------------
     # AGENT UTILS
