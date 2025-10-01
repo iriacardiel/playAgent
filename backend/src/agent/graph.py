@@ -122,7 +122,7 @@ class Agent:
         builder.add_node("tools", ToolNode(self.tools, handle_tool_errors=False))
 
         builder.add_edge(START, "judge")
-        builder.add_edge("judge", "LLM_assistant") # Conditional
+        builder.add_edge("judge", "LLM_assistant") # TODO: Should be a Conditional edge
         builder.add_conditional_edges(
             "LLM_assistant", tools_condition, path_map=["tools", "__end__"]
         )
@@ -175,6 +175,7 @@ class Agent:
         if is_safe:
             return {}
         else:
+            # TODO: if not safe, ovewrite last message (if any) so that LLM response is not shown
             output = "⚠️ Content blocked due to safety concerns."
             return  {"messages": [AIMessage(output)]}
 
