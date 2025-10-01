@@ -115,14 +115,13 @@ class Agent:
     # Judge Node
     def judge_node(self, state: AgentState):
         """LLM Assistant Node - Handles LLM interactions."""
-        input_text = self.filtermessages( 1, state["messages"]).content
+        input_text = self.filtermessages( 1, state["messages"])
 
         prompt = [
                 SystemMessage(content=get_judge_prompt(state.get("short_term_memories", []), cdu = "main")),
             ] + input_text
 
-        response = llm.invoke(prompt)
-        print(response)
+        response = llm.invoke(prompt).text()
         is_safe = response.strip().upper() == "SAFE"
 
         if is_safe:
