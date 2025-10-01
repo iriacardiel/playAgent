@@ -123,14 +123,14 @@ class Agent:
 
         builder.add_edge(START, "judge")
         builder.add_conditional_edges(
-            "judge", self.judge_condition, path_map=["__end__", "LLM_assistant"]
+            "judge", self.judge_condition, path_map={"blocked": "__end__", "safe": "LLM_assistant"}
         )
         builder.add_conditional_edges(
             "LLM_assistant", tools_condition, path_map=["tools", "judge_final"]
         )
         builder.add_edge("tools", "judge_final")
         builder.add_conditional_edges(
-            "judge_final", self.judge_condition, path_map=["__end__", "__end__"]
+            "judge_final", self.judge_condition, path_map={"blocked": "__end__", "safe": "__end__"}
         )
 
         # --------------------------
@@ -178,15 +178,33 @@ class Agent:
     
     # Judge Node
     def judge_node(self, state: AgentState):
-        """LLM Assistant Node - Handles LLM interactions."""
-        input_text = self.filtermessages( 1, state["messages"])
+        """Judge Node - Evaluates message content for safety."""
+        # Get the last message content to evaluate
+        last_messages = self.filtermessages(1, state["messages"])
+        if not last_messages:
+            return {}
+        
+        # Get the last message to evaluate
+        last_message = last_messages[-1]
 
+        # Create judge prompt
+        judge_prompt = get_judge_prompt(cdu="main")
+        
         prompt = [
-                SystemMessage(content=get_judge_prompt(state.get("short_term_memories", []), cdu = "main")),
-            ] + input_text
+            SystemMessage(content=judge_prompt),
+            last_message
+        ]
 
-        response = llm.invoke(prompt).text()
-        is_safe = response.strip().upper() == "SAFE"
+        response = self.llm.invoke(prompt)
+        print(f"Judge response: {response}")
+        
+        # Extract content from response if it's a message object
+        if hasattr(response, 'content'):
+            response_content = response.content
+        else:
+            response_content = str(response)
+            
+        is_safe = response_content.strip().upper() == "SAFE"
 
         if is_safe:
             return {}
