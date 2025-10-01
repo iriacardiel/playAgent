@@ -1,0 +1,105 @@
+<!-- add this in <head> -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+<style>
+  html, body, #map { height: 100%; margin: 0; }  /* critical: gives the map a height */
+  .popup-name { font-weight: 600; margin-bottom: 4px; }
+  .legend {
+    position: absolute; z-index: 1000; bottom: 16px; left: 16px;
+    background: white; padding: 8px 10px; border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,.15);
+    font: 14px/1.2 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  }
+  .legend .badge { display:inline-block; width:12px; height:12px; border-radius:3px; margin-right:6px; background:#eee; }
+</style>
+</head>
+<body>
+  <div id="map"></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <script>
+    const DEFAULT_CENTER = [40.4168, -3.7038];
+    const DEFAULT_ZOOM = 12;
+
+    // ⬇️ Read from query param or fallback to same origin
+    const params = new URLSearchParams(location.search);
+    const backend = params.get('backend') || location.origin;
+
+    const map = L.map('map', { zoomControl: true }).setView(DEFAULT_CENTER, DEFAULT_ZOOM);
+
+    map.createPane('edges');  map.getPane('edges').style.zIndex = 390;
+    map.createPane('nodes');  map.getPane('nodes').style.zIndex = 400;
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    const labelColors = { Person: '#2e7d32', Company: '#1565c0' };
+
+    function nodeStyle(f) {
+      const labels = (f.properties?.labels) || [];
+      const primary = labels[0] || 'Other';
+      const color = labelColors[primary] || '#6d4c41';
+      return { radius: 7, weight: 2, opacity: 1, color, fillOpacity: 0.15, fillColor: color, pane: 'nodes' };
+    }
+    function nodeMarker(feature, latlng) { return L.circleMarker(latlng, nodeStyle(feature)); }
+    function edgeStyle() { return { color: '#7a7a7a', weight: 1.5, opacity: 0.7, pane: 'edges' }; }
+
+    const nodesLayer = L.geoJSON(null, {
+      pointToLayer: nodeMarker,
+      onEachFeature: (f, layer) => {
+        const p = f.properties || {};
+        const name = p.name || 'Unknown';
+        layer.bindPopup(`<div class="popup-name">${name}</div>${(p.labels || []).join(', ')}`);
+        layer.bindTooltip(name, { direction: 'top', offset: [0, -8] });
+      }
+    });
+
+    const edgesLayer = L.geoJSON(null, {
+      style: edgeStyle,
+      onEachFeature: (f, layer) => {
+        const p = f.properties || {};
+        const t = p.rel_type || 'RELATED';
+        layer.bindTooltip(t);
+        layer.bindPopup(`<b>${p.src_name || p.src_id}</b> —[${t}]→ <b>${p.dst_name || p.dst_id}</b>`);
+      }
+    });
+
+    const legend = L.control({ position: 'bottomleft' });
+    legend.onAdd = () => {
+      const div = L.DomUtil.create('div', 'legend');
+      div.innerHTML = `
+        <div><span class="badge" style="background:#2e7d32;"></span>Person</div>
+        <div><span class="badge" style="background:#1565c0;"></span>Company</div>
+      `;
+      return div;
+    };
+    legend.addTo(map);
+
+    async function refreshData() {
+      console.log("🔄 Refreshing map data at", new Date().toLocaleTimeString());
+
+      try {
+        const res = await fetch(`${backend}/api/map_info`, { method: 'POST', cache: 'no-store' });
+        if (!res.ok) throw new Error('Failed to load map data');
+        const { nodes, edges } = await res.json();
+
+        // Clear old layers
+        nodesLayer.clearLayers();
+        edgesLayer.clearLayers();
+
+        if (edges?.type === 'FeatureCollection') edgesLayer.addData(edges).addTo(map);
+        if (nodes?.type === 'FeatureCollection') nodesLayer.addData(nodes).addTo(map);
+      } catch (err) {
+        console.error('Refresh error:', err);
+      }
+  }
+
+  // initial load
+  refreshData();
+
+  // repeat every 30s
+  setInterval(refreshData, 5000);
+
+  </script>
+</body>

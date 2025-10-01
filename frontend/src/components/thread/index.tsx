@@ -115,7 +115,8 @@ export function Thread() {
   const isLoading = stream.isLoading;
 
   const lastError = useRef<string | undefined>(undefined);
-
+  const backend = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:2024';
+  
   const setThreadId = (id: string | null) => {
     _setThreadId(id);
 
@@ -545,9 +546,10 @@ export function Thread() {
       </div>
       
       {/* RIGHT SIDE - Map Panel (NO motion.div wrapper) */}
+
     <MapPanel>
       <iframe
-        src="/friends_map_folium.html"
+        src={`/leaflet_map_template.html?backend=${encodeURIComponent(backend)}`}
         className="w-full h-full"
       />
     </MapPanel>

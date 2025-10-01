@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from api.transcription import router as stt_router
+from api.map import router as map_router
 from config import Settings
 
 
@@ -21,6 +22,8 @@ app.add_middleware(
 
 # Include the transcription and alerts routers
 app.include_router(stt_router, prefix="/api")
+app.include_router(map_router, prefix="/api")
+
 # Add CORS middleware
 
 
