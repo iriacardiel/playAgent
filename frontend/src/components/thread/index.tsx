@@ -39,6 +39,8 @@ import { AssistantMessage, AssistantMessageLoading } from "./messages/ai";
 import { HumanMessage } from "./messages/human";
 import { TooltipIconButton } from "./tooltip-icon-button";
 import { MapPanel } from "@/components/ui/map-panel";
+import { Map, Maximize2, Minimize2 } from "lucide-react";
+
 
 function StickyToBottomContent(props: {
   content: ReactNode;
@@ -90,6 +92,10 @@ export function Thread() {
   const [threadId, _setThreadId] = useQueryState("threadId");
   const [chatHistoryOpen, setChatHistoryOpen] = useQueryState(
     "chatHistoryOpen",
+    parseAsBoolean.withDefault(false),
+  );
+  const [mapOpen, setMapOpen] = useQueryState(
+    "mapOpen",
     parseAsBoolean.withDefault(false),
   );
   const [hideToolCalls, setHideToolCalls] = useQueryState(
@@ -299,8 +305,31 @@ export function Thread() {
                   </Button>
                 )}
               </div>
-              <div className="flex items-center gap-2">
-                <ThemeToggle />
+              
+              {/*Theme, NewThread and Map Buttons*/}
+              <div className="flex items-center gap-4">
+                <ThemeToggle />             
+                
+                <TooltipIconButton
+                  size="lg"
+                  className="p-4"
+                  tooltip="New thread"
+                  variant="ghost"
+                  onClick={() => setThreadId(null)}
+                >
+                  <SquarePen className="size-5" />
+                </TooltipIconButton>
+
+                <TooltipIconButton
+                  size="lg"
+                  className="p-4"
+                  tooltip="Toggle Map"
+                  variant="ghost"
+                  onClick={() => setMapOpen((p) => !p)}
+                >
+                  <Map className="h-5 w-5" />
+                </TooltipIconButton>
+
               </div>
             </div>
           )}
@@ -545,14 +574,32 @@ export function Thread() {
         </div>
       </div>
       
-      {/* RIGHT SIDE - Map Panel (NO motion.div wrapper) */}
-
-    <MapPanel>
-      <iframe
-        src={`/leaflet_map_template.html?backend=${encodeURIComponent(backend)}`}
-        className="w-full h-full"
-      />
-    </MapPanel>
+    {/* RIGHT SIDE - Map Panel */}
+      <motion.div
+        className="relative border-l bg-background overflow-hidden"
+        animate={{
+          width: mapOpen ? 1000 : 0,
+        }}
+        initial={{ width: 0 }}
+        transition={
+          isLargeScreen
+            ? { type: "spring", stiffness: 300, damping: 30 }
+            : { duration: 0 }
+        }
+      >
+        <div className="relative h-full flex flex-col" style={{ width: 1000 }}>
+          
+          {/* Map iframe */}
+          <div className="flex-1 relative">
+            <iframe
+              src={`/leaflet_map_template.html?backend=${encodeURIComponent(backend)}`}
+              className="absolute inset-0 w-full h-full border-0"
+              title="Map Panel"
+            />
+          </div>
+        </div>
+      </motion.div>
+    
     </div>
   );
 }
