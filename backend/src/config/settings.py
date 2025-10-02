@@ -24,12 +24,9 @@ class Settings:
 
     SOFTWARE_VERSION = os.environ.get("SOFTWARE_VERSION")
     
-    # this is in cd ../.env
-    NEO4J_DATABASE = os.environ.get("NEO4J_DATABASE") 
-    NEO4J_USER=os.environ.get("NEO4J_USER")
-    NEO4J_PASSWORD=os.environ.get("NEO4J_PASSWORD")
-    NEO4J_DATABASE=os.environ.get("NEO4J_DATABASE") 
-    NEO4J_URI_PORT=os.environ.get("NEO4J_URI_PORT")
-    NEO4J_HTTP_PORT=os.environ.get("NEO4J_HTTP_PORT")
-    NEODASH_HTTP_PORT=os.environ.get("NEODASH_HTTP_PORT")
-        
+    NEO4J_DATABASE = os.environ.get("NEO4J_DATABASE", "neo4j") 
+    NEO4J_USER=os.environ.get("NEO4J_USER", "neo4j")
+    NEO4J_PASSWORD=os.environ.get("NEO4J_PASSWORD", "test1234")
+    NEO4J_URI_PORT=os.environ.get("NEO4J_URI_PORT", "7687")
+    NEO4J_HTTP_PORT=os.environ.get("NEO4J_HTTP_PORT", "7474")
+    NEODASH_HTTP_PORT=os.environ.get("NEODASH_HTTP_PORT", "5005")
