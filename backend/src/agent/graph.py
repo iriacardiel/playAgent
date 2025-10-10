@@ -56,13 +56,18 @@ class Agent:
         self, llm: BaseChatModel, tools: list, checkpointer: SqliteSaver | None
     ):
         """Initialize the agent with an LLM and tools."""
-        # Store the LLM instance
-        self.llm = llm
+        # Store the LLM instance with do-not-render tag
+        self.llm = llm.with_config(
+            config={"tags": ["langsmith:do-not-render"]}
+        )
+        self.tools = tools + memory_tools
 
         self.checkpointer = checkpointer
 
-        # Bind the LLM with tools
-        self.llm_with_tools = llm.bind_tools(tools)
+        # Bind the LLM with tools and add do-not-render tag
+        self.llm_with_tools = llm.bind_tools(self.tools).with_config(
+            config={"tags": ["langsmith:do-not-render"]}
+        )
 
     # --------------------------
     # BUILD & COMPILE GRAPH
@@ -123,15 +128,20 @@ class Agent:
             SystemMessage(content=SYSTEM_PROMPT),
         ] + messages_list
 
-        log_llm_input(llm_input)
-            
-        # Call LLM
-        ai_message = self.llm_with_tools.invoke(llm_input)
+        with open("./src/logs/llm_input.txt", "w") as f:
+            f.write("Empty" if not llm_input else "\n" + "\n".join(
+                f"{'DORI' if isinstance(m, AIMessage) else 'User' if isinstance(m, HumanMessage) else 'System' if isinstance(m, SystemMessage) else 'Tool'} - {m.content}"
+                for m in llm_input
+            ))
+                
+        ai_message = self.llm_with_tools.batch([llm_input])[0]
 
         # Token count (through LangChain AIMessage)
         log_token_usage(ai_message, messages_list)
         
         # Store the response in a temporary buffer instead of immediately adding to messages
+        # Prefix the ID to prevent frontend rendering until judge approval
+        ai_message.id = f"do-not-render-{ai_message.id}"
         logger.debug("LLM response generated, storing in buffer for safety verification")
         return {"pending_response": ai_message}
     
@@ -201,12 +211,16 @@ class Agent:
             # Tool messages should be passed through without safety evaluation
             if isinstance(pending_message, ToolMessage):
                 logger.debug("Tool message detected, passing through without safety evaluation")
+                # Remove the do-not-render prefix to allow frontend rendering
+                pending_message.id = pending_message.id.replace("do-not-render-", "")
                 return {"messages": [pending_message], "pending_response": None}
             
             is_safe = self._evaluate_content_safety(pending_message)
 
             if is_safe:
                 logger.debug("Content is safe, releasing pending response to messages")
+                # Remove the do-not-render prefix to allow frontend rendering
+                pending_message.id = pending_message.id.replace("do-not-render-", "")
                 # Release the pending response to messages
                 return {"messages": [pending_message], "pending_response": None}
             else:
@@ -286,6 +300,8 @@ if Settings.MODEL_SERVER == "OLLAMA":
         num_ctx=16000,
         n_seq_max=1,
         extract_reasoning=False,
+        streaming=False,
+        stream=False,
     )
 
 if Settings.MODEL_SERVER == "OPENAI":
@@ -293,7 +309,9 @@ if Settings.MODEL_SERVER == "OPENAI":
     llm = ChatOpenAI(
         model=Settings.MODEL_NAME,
         api_key=Settings.OPENAI_API_KEY,
-        temperature=0
+        temperature=0,
+        streaming=False,
+        stream=False
     )
 
 if Settings.MODEL_SERVER == "CLAUDE":
@@ -304,7 +322,9 @@ if Settings.MODEL_SERVER == "CLAUDE":
         max_tokens=None,
         max_retries=6,
         stop=None,
-        disable_streaming=True
+        disable_streaming=True,
+        streaming=False,
+        stream=False
     )
 
 
