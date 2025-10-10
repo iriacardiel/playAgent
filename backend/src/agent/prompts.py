@@ -1,9 +1,7 @@
 from datetime import datetime
 from langchain_core.messages import AnyMessage, HumanMessage, AIMessage, SystemMessage, ToolMessage
 from termcolor import cprint
-def get_system_prompt(short_term_memories: list[str]=[], cdu: str = "main") -> str:
-    # Build the short term memory section
-    memory_section = "\n" + "\n".join("- " + str(mem) for mem in short_term_memories)
+def get_system_prompt(short_term_memories: list[str]=[], cdu: str = "main") -> str:    
             
     MAIN_LLM = f"""
 You name is DORI, an AI assistant. You will talk to an user in a conversational way, like a human.
@@ -53,21 +51,23 @@ Your authorized functions are the following (BY ORDER OF PRIORITY):
 - DO NOT call more than ONE tool per message or step.
 - DO NOT call two consecutive tools, always wait for user to give feedback on the first.
 - NEVER combine multiple tool calls into a single action.
-- If asked to perform multiple actions, ask the user which one to do first. Wait for confirmation before proceeding.
+- If asked to perform multiple actions, ask the user which one to do first. Wait for confirmation before proceeding. 
 
 <short_term_memory> (dynamic):
 This list contains the memories inferred from the conversation. These are important pieces of information that help you to provide a better experience and personalized assistance. 
 This is updated every time you call the tool `save_short_term_memory`.
 You can find more memories in the Long Term Memories section, which are stored in an external database. You can retrieve old memories or insights about the user by calling the tool `retrieve_long_term_memory`. 
 
-{memory_section}
+{"Empty" if not short_term_memories else "\n" + "\n".join(f"- {mem}" for mem in short_term_memories)}
 
 </short_term_memory>
 
 """.strip()
 
-
-    return MAIN_LLM
+    if cdu == "main":
+        SYSTEM_PROMPT = MAIN_LLM    
+    
+    return SYSTEM_PROMPT
 
 def get_judge_prompt(cdu: str = "main"):
     """Returns a prompt for the judge. the objective of this prompt is to return True if content is safe, False if it violates rules."""

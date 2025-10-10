@@ -83,7 +83,7 @@ class Agent:
         builder.add_conditional_edges(
             "LLM_assistant", tools_condition, path_map={"tools": "tools", "__end__": "judge_final"}
         )
-        builder.add_edge("tools", "judge_final")
+        builder.add_edge("tools", "LLM_assistant")
         builder.add_edge("judge_final", "__end__")
 
         # --------------------------
@@ -100,8 +100,8 @@ class Agent:
         if state["messages"]:
             last_message = state["messages"][-1]
             if hasattr(last_message, 'content') and "⚠️ Content blocked" in last_message.content:
-                return "blocked"  # End the conversation
-        return "safe"  # Continue to next step
+                return "blocked"
+        return "safe"
 
     # --------------------------
     # NODES
@@ -129,45 +129,37 @@ class Agent:
         # Token count (through LangChain AIMessage)
         log_token_usage(ai_message, messages_list)
         
-        return {"messages": [ai_message]}
+        # Store the response in a temporary buffer instead of immediately adding to messages
+        logger.debug("LLM response generated, storing in buffer for safety verification")
+        return {"pending_response": ai_message}
     
-    # Judge Node
-    def judge_node(self, state: AgentState):
-        """Judge Node - Evaluates message content for safety."""
-        # Get the last message content to evaluate
-        last_messages = self.filtermessages(1, state["messages"])
-        if not last_messages:
-            logger.debug("No messages to judge")
-            return {}
+    def _evaluate_content_safety(self, message) -> bool:
+        """Evaluate if a message's content is safe using the judge LLM."""
+        logger.debug(f"Evaluating safety of message type: {type(message)}")
+        logger.debug(f"Message content: {getattr(message, 'content', 'No content')[:150]}...")
         
-        # Get the last message to evaluate
-        last_message = last_messages[-1]
-        logger.debug(f"Judging message type: {type(last_message)}")
-        logger.debug(f"Message content: {getattr(last_message, 'content', 'No content')[:100]}...")
-        
-        if isinstance(last_message, ToolMessage):
-            logger.debug("Skipping tool message")
-            return {}  
-
-        judge_prompt = get_judge_prompt(cdu="main")
-        
-        # Create a clean evaluation message with just the content
-        if hasattr(last_message, 'content'):
-            if isinstance(last_message.content, list):
+        # Extract content text
+        if hasattr(message, 'content'):
+            if isinstance(message.content, list):
                 content_text = ""
-                for item in last_message.content:
+                for item in message.content:
                     if isinstance(item, dict) and 'text' in item:
                         content_text += item['text']
                     else:
                         content_text += str(item)
             else:
-                content_text = str(last_message.content)
+                content_text = str(message.content)
         else:
-            content_text = str(last_message)
+            content_text = str(message)
+        
+        # If content is empty or only whitespace, consider it safe (e.g., tool-only messages)
+        if not content_text or not content_text.strip():
+            logger.debug("Empty content detected, defaulting to SAFE")
+            return True
         
         # Create evaluation message
         evaluation_message = HumanMessage(content=content_text)
-        
+        judge_prompt = get_judge_prompt(cdu="main")
         prompt = [
             SystemMessage(content=judge_prompt),
             evaluation_message
@@ -187,21 +179,70 @@ class Agent:
         # Handle empty or invalid responses
         if not response_content or not response_content.strip():
             logger.debug("Empty response from judge, defaulting to SAFE")
-            is_safe = True
+            return True
         else:
             is_safe = response_content.strip().upper() == "SAFE"
+            logger.debug(f"Is safe: {is_safe}")
+            return is_safe
+
+    # Judge Node
+    def judge_node(self, state: AgentState):
+        """Judge Node - Evaluates message content for safety."""
+       
+        blocked_message = "⚠️ Content blocked due to safety concerns."
+
+        # Check if we have a pending response to evaluate
+        if "pending_response" in state and state["pending_response"]:
+            logger.debug("Judge node called with pending response for safety verification")
+            pending_message = state["pending_response"]
             
-        logger.debug(f"Is safe: {is_safe}")
+            # Tool messages should be passed through without safety evaluation
+            if isinstance(pending_message, ToolMessage):
+                logger.debug("Tool message detected, passing through without safety evaluation")
+                return {"messages": [pending_message], "pending_response": None}
+            
+            is_safe = self._evaluate_content_safety(pending_message)
+
+            if is_safe:
+                logger.debug("Content is safe, releasing pending response to messages")
+                # Release the pending response to messages
+                return {"messages": [pending_message], "pending_response": None}
+            else:
+                # If not safe, replace with a safety warning
+                output = blocked_message
+                logger.debug("Content is unsafe, replacing with safety warning")
+                blocked_message = AIMessage(content=output)
+                return {"messages": [blocked_message], "pending_response": None}
+        
+        # Fallback to original logic for other cases (like initial user input check)
+        last_messages = self.filtermessages(1, state["messages"])
+        if not last_messages:
+            logger.debug("No messages to judge")
+            return {}
+        
+        logger.debug(f"Judge node called with {len(state['messages'])} messages in state")
+        
+        # Get the last message to evaluate
+        last_message = last_messages[-1]
+        
+        if isinstance(last_message, ToolMessage):
+            logger.debug("Skipping tool message")
+            return {}  
+
+        is_safe = self._evaluate_content_safety(last_message)
 
         if is_safe:
             logger.debug("Content is safe, returning empty state")
             return {}
         else:
             # If not safe, replace the last message with a safety warning
-            output = "⚠️ Content blocked due to safety concerns."
+            output = blocked_message
             logger.debug("Content is unsafe, replacing with safety warning")
+            logger.debug(f"Original message count: {len(state['messages'])}")
             # Replace the last message instead of adding a new one
             new_messages = state["messages"][:-1] + [AIMessage(content=output)]
+            logger.debug(f"New message count: {len(new_messages)}")
+            logger.debug(f"Replaced message with: {output}")
             return {"messages": new_messages}
 
     # --------------------------
@@ -247,7 +288,7 @@ if Settings.MODEL_SERVER == "OPENAI":
     llm = ChatOpenAI(
         model=Settings.MODEL_NAME,
         api_key=Settings.OPENAI_API_KEY,
-        temperature=0,
+        temperature=0
     )
 
 if Settings.MODEL_SERVER == "CLAUDE":
@@ -258,6 +299,7 @@ if Settings.MODEL_SERVER == "CLAUDE":
         max_tokens=None,
         max_retries=6,
         stop=None,
+        disable_streaming=True
     )
 
 

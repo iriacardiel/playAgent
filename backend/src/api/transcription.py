@@ -12,16 +12,32 @@ from services.stt import STTModel
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-stt_model = STTModel(
-    model_id=Settings.STT_MODEL,
-    device=Settings.STT_DEVICE,
-    language=Settings.STT_LANGUAGE,
-)
+# Only initialize STT model if enabled
+stt_model = None
+if Settings.STT_ENABLED:
+    try:
+        stt_model = STTModel(
+            model_id=Settings.STT_MODEL,
+            device=Settings.STT_DEVICE,
+            language=Settings.STT_LANGUAGE,
+        )
+        logger.info("STT model initialized successfully")
+    except Exception as e:
+        logger.error(f"Failed to initialize STT model: {e}")
+        stt_model = None
+else:
+    logger.info("STT model disabled via STT_ENABLED setting")
 
 
 @router.post("/transcribe")
 async def transcribe_audio(audio: UploadFile = File(...)):
     """Transcribe audio using Whisper."""
+    if not Settings.STT_ENABLED or stt_model is None:
+        raise HTTPException(
+            status_code=503, 
+            detail="Speech-to-text functionality is disabled. Set STT_ENABLED=true to enable."
+        )
+    
     try:
         # print(f"Received file: {audio.filename}, size: {audio.size} bytes")
 
