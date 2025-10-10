@@ -27,3 +27,4 @@ class AgentState(TypedDict, total=False):
     tasks: Annotated[list[str], add]
     tools_used : Annotated[list[str], add]
     short_term_memories: list[dict]
+    pending_response: AnyMessage  # Buffer for LLM response before safety verification

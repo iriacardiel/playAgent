@@ -19,6 +19,7 @@ class Settings:
     STT_MODEL = os.environ.get("STT_MODEL")
     STT_DEVICE = os.environ.get("STT_DEVICE")
     STT_LANGUAGE = os.environ.get("STT_LANGUAGE")
+    STT_ENABLED = os.environ.get("STT_ENABLED", "true").lower() == "true"
 
     SOFTWARE_VERSION = os.environ.get("SOFTWARE_VERSION")
     
