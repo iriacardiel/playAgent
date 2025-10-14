@@ -14,10 +14,6 @@ dev-backend:
 	@echo "Starting backend development server..."
 	@cd backend && exec langgraph dev --config ./langgraph.json --allow-blocking --no-browser --no-reload
 
-dev-backend-multi:
-	@echo "Starting backend development server..."
-	@cd backend && exec langgraph dev --config ./langgraph.multi.json --allow-blocking --no-browser
-
 # Run frontend and backend concurrently
 dev:
 	@echo "Starting both frontend and backend development servers..."

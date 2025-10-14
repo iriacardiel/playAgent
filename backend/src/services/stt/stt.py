@@ -19,30 +19,33 @@ class STTModel:
 
         torch_dtype = torch.float16 if device.type == "cuda" else torch.float32
 
-        model = AutoModelForSpeechSeq2Seq.from_pretrained(
-            model_id,
-            dtype=torch_dtype,
-            low_cpu_mem_usage=True,
-            use_safetensors=True,
-            local_files_only=True,
-        )
-        processor = AutoProcessor.from_pretrained(model_id)
+        try:
+            model = AutoModelForSpeechSeq2Seq.from_pretrained(
+                model_id,
+                dtype=torch_dtype,
+                low_cpu_mem_usage=True,
+                use_safetensors=True,
+                local_files_only=True,
+            )
+            processor = AutoProcessor.from_pretrained(model_id)
 
-        # Create the pipeline
-        self._pipeline = pipeline(
-            "automatic-speech-recognition",
-            model=model,
-            tokenizer=processor.tokenizer,
-            feature_extractor=processor.feature_extractor,
-            chunk_length_s=30,
-            dtype=torch_dtype,
-            device=device,
-            generate_kwargs={
-                "max_new_tokens": 128,
-                "task": "transcribe",
-                "language": language,
-            },
-        )
+            # Create the pipeline
+            self._pipeline = pipeline(
+                "automatic-speech-recognition",
+                model=model,
+                tokenizer=processor.tokenizer,
+                feature_extractor=processor.feature_extractor,
+                chunk_length_s=30,
+                dtype=torch_dtype,
+                device=device,
+                generate_kwargs={
+                    "max_new_tokens": 128,
+                    "task": "transcribe",
+                    "language": language,
+                },
+            )
+        except Exception as e:
+            print("Error loading model:", e)
 
     def transcribe_audio(self, file_path: str | Path):
         """Transcribe audio file using the Whisper model."""

@@ -90,7 +90,6 @@ backend/
 ├── .venv/
 ├── Dockerfile # (2)
 ├── langgraph.json
-├── langgraph.multi.json
 ├── pyproject.toml # (3)
 ├── src/
 └── uv.lock
