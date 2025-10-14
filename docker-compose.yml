@@ -77,8 +77,8 @@ services:
       NEXT_TELEMETRY_DISABLED: "1"
       PORT: "${FRONTEND_PORT:-3000}"
       LANGGRAPH_API_URL: http://backend:${BACKEND_PORT:-2024}
-    depends_on:
-      - backend
+    # depends_on:
+    #   - backend
     #volumes: # No volumes: image is fully self-contained
 
 

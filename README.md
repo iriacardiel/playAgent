@@ -47,6 +47,12 @@ uv sync # to sync dependencies to from pyproject.toml to .venv
 cd .. # go back to root folder
 ```
 
+### Neo4j
+
+```bash
+docker compose up -d neo4j # to start neo4j container
+```
+
 ### Run the stack
 
 ```bash
@@ -57,10 +63,15 @@ or
 
 ```bash
 make dev-backend # to run backend only
+make dev-frontend # to run frontend only
 ```
 
+Run the following scripts to load data into Neo4j Knowledge Graph and make the nodes move in the map:
+
 ```bash
-make dev-frontend # to run frontend only
+python backend/src/services/neo4j/load_friends.py
+python backend/src/services/neo4j/load_extra_friends.py
+python backend/src/services/neo4j/animate_friends.py
 ```
 
 ## Dockerize the Agent Stack for offline use / sharing
@@ -71,7 +82,7 @@ In order to build an image based on a module's source code, the following files 
 - (2) `Dockerfile`
 - (3) List of dependencies (`pyproject.toml`, `package.json`, etc)
 
-## Backend module:
+### Backend module:
 
 If you are using Huggingface models, make sure to copy your huggingface models to the backend folder before building the image.
 
@@ -95,7 +106,7 @@ backend/
 └── uv.lock
 ```
 
-## Frontend module:
+### Frontend module:
 
 ```bash
 frontend/
@@ -123,7 +134,7 @@ frontend/
 └── tsconfig.json
 ```
 
-## Ollama module:
+### Ollama module:
 
 To create a self-contained ollama image with the models included, follow these steps:
 
@@ -213,7 +224,7 @@ docker rm -f ollama-test
 
 5. Now, when you run `docker compose up -d`, it will build the ollama image with the models included if it doesn't exist yet, and then start the container.
 
-## Build the images
+### Build the images
 
 **Option A**: All images at once
 
@@ -222,6 +233,9 @@ docker compose build --no-cache
 ```
 
 **Option B**: One by one
+```bash 
+docker compose build --no-cache neo4j 
+```
 
 ```bash 
 docker compose build --no-cache ollama 
@@ -235,7 +249,7 @@ docker compose build --no-cache backend
 docker compose build --no-cache frontend 
 ```
 
-## Initate the containers if needed (optional)
+### Initate the containers if needed (optional)
 
 Raise the images in detached mode:
 
@@ -255,10 +269,10 @@ To stop and remove the containers, networks, and volumes:
 docker compose down -v
 ```
 
-## Save and load all images (for offline use / sharing)
+### Save and load all images (for offline use / sharing)
 
 ```bash
-docker image ls | grep -E 'agent-(ollama|backend|frontend)-i'
+docker image ls | grep -E 'agent-(ollama|backend|frontend|neo4j)-i'
 ```
 
 ```bash
@@ -271,7 +285,7 @@ docker save -o agent-stack-latest.tar agent-ollama-i:latest agent-backend-i:late
 gzip -9 agent-stack-latest.tar
 ```
 
-## On the target folder/machine (offline)
+### On the target folder/machine (offline)
 
 **if gzipped**
 
@@ -286,7 +300,7 @@ docker load -i agent-stack-latest.tar
 ```
 
 ```bash
-docker image ls | grep -E 'agent-(ollama|backend|frontend)-i'
+docker image ls | grep -E 'agent-(ollama|backend|frontend|neo4j)-i'
 ```
 
 ### Then run with:
