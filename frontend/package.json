@@ -16,8 +16,7 @@
     "lint": "next lint",
     "lint:fix": "next lint --fix",
     "format": "prettier --write .",
-    "format:check": "prettier --check .",
-    "postinstall": "cp -r node_modules/leaflet/dist public/leaflet"
+    "format:check": "prettier --check ."
   },
   "dependencies": {
     "@langchain/core": "^0.3.44",
