@@ -21,7 +21,7 @@ from agent.tools_and_schemas import (
     retrieve_long_term_memory,
 )
 from config.settings import Settings
-from logs.log_utils import log_token_usage
+from utils.logger import log_token_usage, log_llm_input
 from termcolor import colored
 
 VERBOSE = bool(int(Settings.VERBOSE))
@@ -121,12 +121,8 @@ class Agent:
             SystemMessage(content=get_system_prompt(state.get("short_term_memories", []), cdu = "main")),
         ] + messages_list
 
-        with open("./src/logs/llm_input.txt", "w") as f:
-            f.write("Empty" if not llm_input else "\n" + "\n".join(
-                f"{'DORI' if isinstance(m, AIMessage) else 'User' if isinstance(m, HumanMessage) else 'System' if isinstance(m, SystemMessage) else 'Tool'} - {m.content}"
-                for m in llm_input
-            ))
-                
+        log_llm_input(llm_input)
+            
         ai_message = self.llm_with_tools.batch([llm_input])[0]
 
         # Token count (through LangChain AIMessage)

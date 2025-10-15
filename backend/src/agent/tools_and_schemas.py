@@ -14,7 +14,7 @@ import numpy as np
 from termcolor import colored, cprint
 
 from config import Settings
-from long_term_memory.vector_store import ChromaVectorMemoryStore
+from services.memory.chromadb_store import ChromaVectorMemoryStore
 from agent.state import AgentState
 
 VERBOSE = bool(int(Settings.VERBOSE))

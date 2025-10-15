@@ -1,3 +1,7 @@
+ollama-custom/.ollama/**
+tmp/**
+
+agent-stack-latest.tar
 .bash.config.local
 package-lock.json
 .venv
@@ -5,5 +9,4 @@ ApiKey.json
 env/
 .vscode/
 **/.env
-backend/src/services/stt/stt.py
 backend/.env

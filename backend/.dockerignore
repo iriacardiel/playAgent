@@ -1,5 +1,10 @@
-# Byte-compiled / optimized / DLL files
-
+# --- VCS / misc ---
+.git
+.gitignore
+.DS_Store
+*.swp
+*.swo
+.idea/
 .vscode/
 
 # --- Python caches & build artifacts ---
@@ -8,7 +13,6 @@
 **/*.py.class
 **/*.pyo
 **/*.pyd
-uv.lock
 
 # C extensions
 *.so
@@ -139,9 +143,9 @@ venv.bak/
 .venv/
 
 # --- Env / secrets (compose passes env separately) ---
-.env
-.env.*
-*.env
+# .env
+# .env.*
+# *.env
 
 # Spyder project settings
 .spyderproject
@@ -169,7 +173,6 @@ cython_debug/
 
 
 .langgraph_api/
-.huggingface/
 
 # Logging and checkpoint files
 *.db-shm

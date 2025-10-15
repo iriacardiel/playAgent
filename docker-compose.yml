@@ -1,72 +1,49 @@
 # docker-compose.yml
 
 services:
+    
   ollama:
-    image: ollama/ollama:latest
-    container_name: ollama
+    # Build from your custom Dockerfile (which COPYs ./.ollama into /root/.ollama)
+    build:
+      context: ./ollama-custom        # <- folder that has Dockerfile and .ollama/
+      dockerfile: Dockerfile
+    image: agent-ollama-i:latest  # tag the result so it's easy to reference/save
+    container_name: agent-ollama-c
     restart: unless-stopped
-    ports: ["11434:11434"]
+    ports: ["${OLLAMA_PORT:-11434}:${OLLAMA_PORT:-11434}"]
     environment:
       OLLAMA_KEEP_ALIVE: "24h"
-    volumes:
-      - /home/ia-nsdas/.ollama:/root/.ollama
-    gpus: all # install NVIDIA Container Toolkit
-    
-#   backend:
-#       build:
-#         context: ./backend
-#         dockerfile: Dockerfile
-#       container_name: tars-backend
-#       restart: unless-stopped
-#       working_dir: /app
-#       environment:
-#         OLLAMA_HOST: http://ollama:11434
-#         PORT: "2024"
-#         PYTHONPATH: /app/src
-#       command: >
-#         /opt/venv/bin/langgraph dev
-#         --config ./langgraph.json
-#         --host 0.0.0.0
-#         --port ${PORT:-2024}
-#         --allow-blocking
-#         --no-browser
-#       ports:
-#         - "2024:2024"
-#       volumes:
-#         - ./backend:/app
+    gpus: all # UNCOMMENT if you have nvidia-docker set up
+    #volumes: # No volumes: image is fully self-contained
+
+
+  backend:
+      build:
+        context: ./backend
+        dockerfile: Dockerfile
+      image: agent-backend-i:latest  # tag the result so it's easy to reference/save
+      container_name: agent-backend-c
+      restart: unless-stopped
+      ports: ["${BACKEND_PORT:-2024}:${BACKEND_PORT:-2024}"]
+      environment:
+        OLLAMA_HOST: http://ollama:${OLLAMA_PORT:-11434}
+        PORT: "${BACKEND_PORT:-2024}"
+      gpus: all # UNCOMMENT if you have nvidia-docker set up
+      #volumes: # No volumes: image is fully self-contained
 
   frontend:
     build:
       context: ./frontend
-      target: base
-    container_name: tars-frontend
+      dockerfile: Dockerfile
+      args:
+        LANGGRAPH_API_URL: http://backend:${BACKEND_PORT:-2024}  # or whatever you want at build time
+    image: agent-frontend-i:latest
+    container_name: agent-frontend-c
     restart: unless-stopped
-    working_dir: /app
+    ports: ["${FRONTEND_PORT:-3000}:${FRONTEND_PORT:-3000}"]
     environment:
-      NODE_ENV: development
+      NODE_ENV: production
       NEXT_TELEMETRY_DISABLED: "1"
-    command: sh -c "pnpm install && pnpm dev -p 3003 -H 0.0.0.0" # Dev: mirrors `cd frontend && pnpm dev` pending for Prod: standalone Next.js server
-    ports:
-      - "3003:3003"
-    volumes:
-      - ./frontend:/app
-      - web_node_modules:/app/node_modules
-      - web_next_cache:/app/.next
-
-#   # web:
-#   #   build:
-#   #     context: ./frontend
-#   #     target: runner
-#   #   ports:
-#   #     - "3003:3003"
-#   #   environment:
-#   #     NODE_ENV: production
-#   #     NEXT_TELEMETRY_DISABLED: "1"
-#   #   restart: unless-stopped
-
-volumes:
-  chroma_data:  # backend volume
-  web_node_modules: # frontend volume
-  web_next_cache: # frontend volume
-
-
+      PORT: "${FRONTEND_PORT:-3000}"
+      LANGGRAPH_API_URL: http://backend:${BACKEND_PORT:-2024}
+    #volumes: # No volumes: image is fully self-contained

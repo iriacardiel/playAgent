@@ -1,9 +1,25 @@
 import csv
 from config.settings import Settings
-from langchain_core.messages import AIMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from datetime import datetime
 from typing import Any
+import os
 
+def log_llm_input(llm_input):
+    file_path = "./src/logs/llm_input.txt"
+    # ✅ Ensure directory exists
+    os.makedirs(os.path.dirname(file_path), exist_ok=True)
+    
+    with open(file_path, mode = "w") as f:
+            f.write("Empty" if not llm_input else "\n" + "\n".join(
+                f"{'DORI' if isinstance(m, AIMessage) else 'User' if isinstance(m, HumanMessage) else 'System' if isinstance(m, SystemMessage) else 'Tool'} - {m.content}"
+                for m in llm_input
+            ))
+    
+    
+    
+    
+    
 def log_token_usage(ai_message: AIMessage, messages_list: list[Any]):
     timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     
@@ -25,6 +41,8 @@ def log_token_usage(ai_message: AIMessage, messages_list: list[Any]):
         
 
     file_path = "./src/logs/token_usage_log.csv"
+    # ✅ Ensure directory exists
+    os.makedirs(os.path.dirname(file_path), exist_ok=True)
     
     # Clear file if messages_list has length 1
     if len(messages_list) == 1:
