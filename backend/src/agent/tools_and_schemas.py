@@ -276,27 +276,16 @@ def get_social_data(
         print(colored("Executing cypher query synchronously...", "blue"))
 
         # Use direct execution to completely bypass any streaming mechanisms
-        out =Neo4jService.get_cypher_chain().invoke(question)
-        print(out)
-        print(type(out))
-        response = out.get("result","")
-        steps = out.get("intermediate_steps") or []
-        if steps:
-            cypher = steps[0].get("query") 
-            context = steps[1].get("context")
-            cprint(response, "cyan")
-            print("#"*60)
-            print()
+        response = json.dumps(Neo4jService.get_cypher_chain().invoke(question))
 
         print(colored(f"CypherChain response completed: {response[:100]}...", "green"))
 
     except Exception as e:
-        out = {}
         print(colored(f"Error in cypher execution: {e}", "red"))
         response = f"There was an error in get_battlefield_data tool: {e}"
 
     # Return the COMPLETE result as a tool message
-    tool_message = ToolMessage(json.dumps(out), tool_call_id=tool_call_id)
+    tool_message = ToolMessage(response, tool_call_id=tool_call_id)
 
     update = {"messages": [tool_message], "tools_used": ["get_battlefield_data"]}
 

@@ -26,8 +26,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-NEO4J_URI_PORT = Settings.NEO4J_URI_PORT
-NEO4J_URI ="bolt://localhost:"+ NEO4J_URI_PORT
+NEO4J_URI = Settings.NEO4J_URI
 NEO4J_USER = Settings.NEO4J_USER
 NEO4J_PASSWORD = Settings.NEO4J_PASSWORD
 EMB_PROPERTY =Settings.EMB_PROPERTY
@@ -62,6 +61,7 @@ class Neo4jService:
                 password=NEO4J_PASSWORD,
             )
             cls._initialized = True
+            cls.reset_graph()
 
         except Exception as e:
             logger.error(f"Failed to initialize TrackService: {e}")
@@ -81,7 +81,7 @@ class Neo4jService:
                 verbose=True,
                 cypher_prompt=CYPHER_GENERATION_PROMPT,
                 allow_dangerous_requests=True,
-                return_direct=False,
+                return_direct=True,
                 top_k=100,
                 return_intermediate_steps=True,
             )
@@ -109,6 +109,8 @@ class Neo4jService:
         try:
             cls._graph.query("CALL apoc.schema.assert({}, {})")
             cls._graph.query("MATCH (n) DETACH DELETE n")
+            cprint(f"Graph reset", "green")
+
         except Exception as e:
             cprint(f"An error occurred restoring graph: {e}.", "red")
             
@@ -420,13 +422,19 @@ class Neo4jService:
         
         
     @classmethod 
-    def get_map_features(cls):
+    def get_map_features_sync(cls):
                 
+        if not cls._initialized or not cls._graph:
+            cls.initialize()
+            
         # --- Query your Neo4j (adapt to your driver) ---
         # Nodes with coordinates
         node_query = """
         MATCH (n)
-        WHERE n.location.latitude IS NOT NULL AND n.location.longitude IS NOT NULL
+        WHERE n.uuid IS NOT NULL
+            AND n.location IS NOT NULL 
+            AND n.location.latitude IS NOT NULL 
+            AND n.location.longitude IS NOT NULL
         RETURN n.uuid AS id, n.name AS name, labels(n) AS labels,
                n.location.latitude AS lat, n.location.longitude AS lon
         """
@@ -434,8 +442,13 @@ class Neo4jService:
         # Relationships where both ends have coordinates
         rel_query = """
         MATCH (a)-[r]-(b)
-        WHERE a.location.latitude IS NOT NULL AND a.location.longitude IS NOT NULL
-          AND b.location.latitude IS NOT NULL AND b.location.longitude IS NOT NULL
+        WHERE a.uuid IS NOT NULL AND b.uuid IS NOT NULL
+            AND a.location IS NOT NULL
+            AND b.location IS NOT NULL
+            AND a.location.latitude IS NOT NULL 
+            AND a.location.longitude IS NOT NULL
+            AND b.location.latitude IS NOT NULL 
+            AND b.location.longitude IS NOT NULL
         RETURN a.uuid AS src_id, b.uuid AS dst_id, type(r) AS rel_type,
                a.location.latitude AS a_lat, a.location.longitude AS a_lon,
                b.location.latitude AS b_lat, b.location.longitude AS b_lon
@@ -481,20 +494,22 @@ class Neo4jService:
             b_lat, b_lon = e.get("b_lat"), e.get("b_lon")
             if None in (a_lat, a_lon, b_lat, b_lon):
                 continue
-
+            
+            rel_props = {
+                    "src_id": src,
+                    "dst_id": dst,
+                    "rel_type": e.get("rel_type", "RELATED"),
+                    "src_name": node_index.get(src, {}).get("name", str(src)),
+                    "dst_name": node_index.get(dst, {}).get("name", str(dst)),
+                }
+            
             feat = {
                 "type": "Feature",
                 "geometry": {
                     "type": "LineString",
                     "coordinates": [[a_lon, a_lat], [b_lon, b_lat]],
                 },
-                "properties": {
-                    "src_id": src,
-                    "dst_id": dst,
-                    "rel_type": e.get("rel_type", "RELATED"),
-                    "src_name": node_index.get(src, {}).get("name", str(src)),
-                    "dst_name": node_index.get(dst, {}).get("name", str(dst)),
-                },
+                "properties": rel_props,
             }
             edge_features.append(feat)
         
