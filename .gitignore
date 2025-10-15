@@ -5,3 +5,5 @@ ApiKey.json
 env/
 .vscode/
 **/.env
+backend/src/services/stt/stt.py
+backend/.env
