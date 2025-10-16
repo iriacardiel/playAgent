@@ -110,7 +110,8 @@ class Neo4jService:
             cls._graph.query("CALL apoc.schema.assert({}, {})")
             cls._graph.query("MATCH (n) DETACH DELETE n")
             cprint(f"Graph reset", "green")
-
+            cls.create_constraint("Person", "uuid")
+            cls.create_constraint("Company", "uuid")
         except Exception as e:
             cprint(f"An error occurred restoring graph: {e}.", "red")
             
@@ -426,92 +427,100 @@ class Neo4jService:
                 
         if not cls._initialized or not cls._graph:
             cls.initialize()
-            
-        # --- Query your Neo4j (adapt to your driver) ---
-        # Nodes with coordinates
-        node_query = """
-        MATCH (n)
-        WHERE n.uuid IS NOT NULL
-            AND n.location IS NOT NULL 
-            AND n.location.latitude IS NOT NULL 
-            AND n.location.longitude IS NOT NULL
-        RETURN n.uuid AS id, n.name AS name, labels(n) AS labels,
-               n.location.latitude AS lat, n.location.longitude AS lon
+                
+        count_query = """
+        MATCH (n) RETURN count(n) as count
         """
+        node_count = cls._graph.query(count_query)[0]["count"]  # -> list[dict]
 
-        # Relationships where both ends have coordinates
-        rel_query = """
-        MATCH (a)-[r]-(b)
-        WHERE a.uuid IS NOT NULL AND b.uuid IS NOT NULL
-            AND a.location IS NOT NULL
-            AND b.location IS NOT NULL
-            AND a.location.latitude IS NOT NULL 
-            AND a.location.longitude IS NOT NULL
-            AND b.location.latitude IS NOT NULL 
-            AND b.location.longitude IS NOT NULL
-        RETURN a.uuid AS src_id, b.uuid AS dst_id, type(r) AS rel_type,
-               a.location.latitude AS a_lat, a.location.longitude AS a_lon,
-               b.location.latitude AS b_lat, b.location.longitude AS b_lon
-        """
-
-        # Replace `graph.query` with your actual execution:
-        nodes = cls._graph.query(node_query)  # -> list[dict]
-        rels  = cls._graph.query(rel_query)   # -> list[dict]
-
-        # --- Build GeoJSON for nodes ---
+        print(f"{node_count} nodes")
+        
         node_features = []
-        node_index = {}  # id -> feature props (or entire feature)
-        for n in nodes:
-            nid = n.get("id")
-            lat, lon = n.get("lat"), n.get("lon")
-            if lat is None or lon is None:
-                continue
-            props = {
-                "id": nid,
-                "name": n.get("name") or "Unknown",
-                "labels": n.get("labels") or [],
-            }
-            feat = {
-                "type": "Feature",
-                "geometry": {"type": "Point", "coordinates": [lon, lat]},
-                "properties": props,
-            }
-            node_features.append(feat)
-            node_index[nid] = props
-
-        # --- Build GeoJSON for edges (dedupe) ---
-        seen = set()
         edge_features = []
-        for e in rels:
-            src, dst = e.get("src_id"), e.get("dst_id")
-            # dedupe (undirected); include rel_type in key so parallel types show
-            key = (min(src, dst), max(src, dst), e.get("rel_type"))
-            if key in seen:
-                continue
-            seen.add(key)
+        if node_count != 0:
+            # --- Query your Neo4j (adapt to your driver) ---
+            # Nodes with coordinates
+            node_query = """
+            MATCH (n)
+            WHERE n.uuid IS NOT NULL
+                AND n.location IS NOT NULL 
+                AND n.location.latitude IS NOT NULL 
+                AND n.location.longitude IS NOT NULL
+            RETURN n.uuid AS id, n.name AS name, labels(n) AS labels,
+                n.location.latitude AS lat, n.location.longitude AS lon
+            """
 
-            a_lat, a_lon = e.get("a_lat"), e.get("a_lon")
-            b_lat, b_lon = e.get("b_lat"), e.get("b_lon")
-            if None in (a_lat, a_lon, b_lat, b_lon):
-                continue
-            
-            rel_props = {
-                    "src_id": src,
-                    "dst_id": dst,
-                    "rel_type": e.get("rel_type", "RELATED"),
-                    "src_name": node_index.get(src, {}).get("name", str(src)),
-                    "dst_name": node_index.get(dst, {}).get("name", str(dst)),
+            # Relationships where both ends have coordinates
+            rel_query = """
+            MATCH (a)-[r]-(b)
+            WHERE a.uuid IS NOT NULL AND b.uuid IS NOT NULL
+                AND a.location IS NOT NULL
+                AND b.location IS NOT NULL
+                AND a.location.latitude IS NOT NULL 
+                AND a.location.longitude IS NOT NULL
+                AND b.location.latitude IS NOT NULL 
+                AND b.location.longitude IS NOT NULL
+            RETURN a.uuid AS src_id, b.uuid AS dst_id, type(r) AS rel_type,
+                a.location.latitude AS a_lat, a.location.longitude AS a_lon,
+                b.location.latitude AS b_lat, b.location.longitude AS b_lon
+            """
+
+            # Replace `graph.query` with your actual execution:
+            nodes = cls._graph.query(node_query)  # -> list[dict]
+            rels  = cls._graph.query(rel_query)   # -> list[dict]
+
+            # --- Build GeoJSON for nodes ---
+            node_index = {}  # id -> feature props (or entire feature)
+            for n in nodes:
+                nid = n.get("id")
+                lat, lon = n.get("lat"), n.get("lon")
+                if lat is None or lon is None:
+                    continue
+                props = {
+                    "id": nid,
+                    "name": n.get("name") or "Unknown",
+                    "labels": n.get("labels") or [],
                 }
-            
-            feat = {
-                "type": "Feature",
-                "geometry": {
-                    "type": "LineString",
-                    "coordinates": [[a_lon, a_lat], [b_lon, b_lat]],
-                },
-                "properties": rel_props,
-            }
-            edge_features.append(feat)
+                feat = {
+                    "type": "Feature",
+                    "geometry": {"type": "Point", "coordinates": [lon, lat]},
+                    "properties": props,
+                }
+                node_features.append(feat)
+                node_index[nid] = props
+
+            # --- Build GeoJSON for edges (dedupe) ---
+            seen = set()
+            for e in rels:
+                src, dst = e.get("src_id"), e.get("dst_id")
+                # dedupe (undirected); include rel_type in key so parallel types show
+                key = (min(src, dst), max(src, dst), e.get("rel_type"))
+                if key in seen:
+                    continue
+                seen.add(key)
+
+                a_lat, a_lon = e.get("a_lat"), e.get("a_lon")
+                b_lat, b_lon = e.get("b_lat"), e.get("b_lon")
+                if None in (a_lat, a_lon, b_lat, b_lon):
+                    continue
+                
+                rel_props = {
+                        "src_id": src,
+                        "dst_id": dst,
+                        "rel_type": e.get("rel_type", "RELATED"),
+                        "src_name": node_index.get(src, {}).get("name", str(src)),
+                        "dst_name": node_index.get(dst, {}).get("name", str(dst)),
+                    }
+                
+                feat = {
+                    "type": "Feature",
+                    "geometry": {
+                        "type": "LineString",
+                        "coordinates": [[a_lon, a_lat], [b_lon, b_lat]],
+                    },
+                    "properties": rel_props,
+                }
+                edge_features.append(feat)
         
         
         return node_features, edge_features
