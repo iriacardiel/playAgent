@@ -18,8 +18,6 @@ from services.neo4j import Neo4jService
 from services.memory.chromadb_store import ChromaVectorMemoryStore
 from agent.state import AgentState
 
-VERBOSE = bool(int(Settings.VERBOSE))
-
 # --------------------------
 # TOOLS
 # --------------------------

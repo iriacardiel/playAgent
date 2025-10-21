@@ -5,21 +5,12 @@ from langgraph.graph.message import add_messages
 from langgraph.graph.ui import AnyUIMessage, ui_message_reducer
 
 
-def add_str(left, right):
+def add(left, right):
     """Can also import `add` from the `operator` built-in."""
     if left != right:
         return left + right
     else:
-        return left + ["None"]
-    
-def add_dict(left, right):
-    """Can also import `add` from the `operator` built-in."""
-    if left != right:
-        return left + right
-    else:
-        return left + [{}]
-
-
+        return left + [None]
 
 # --------------------------
 # STATE
@@ -33,6 +24,6 @@ class TokenUsage(TypedDict):
 class AgentState(TypedDict, total=False):
     messages: Annotated[List[AnyMessage], add_messages]
     ui: Annotated[Sequence[AnyUIMessage], ui_message_reducer]
-    tasks: Annotated[list[str], add_str]
-    tools_used : Annotated[list[str], add_str]
+    tasks: Annotated[list[str], add]
+    tools_used : Annotated[list[str], add]
     short_term_memories: list[dict]

@@ -104,9 +104,6 @@ def ingest() -> None:
             rel_props={"since": r.get("since",0)},
         )
 
-    # Plot nodes into maps # TODO: Not used
-    #Neo4jService.create_visualizations(directory=F"{HERE / "data/friends/friends_map_"}")
-
     cprint("\nIngestion completed successfully.", "green")
 
 

@@ -11,7 +11,7 @@ from langchain_neo4j import GraphCypherQAChain, Neo4jGraph
 
 # === Local helpers
 from services.neo4j.prompts import CYPHER_GENERATION_PROMPT
-from helpers import helper_leaflet, helper_folium, helper_ollama
+from helpers import helper_ollama
 
 # === Local settings
 from config import Settings
@@ -524,29 +524,6 @@ class Neo4jService:
         
         
         return node_features, edge_features
-    
-    @classmethod
-    def create_visualizations(cls, directory:str=""):
-        
-        try:
-            query = """
-            MATCH (n)
-            RETURN 
-            n.name AS name, labels(n) AS labels,
-            n.location.latitude AS lat, 
-            n.location.longitude AS lon
-            """
-            
-            records = cls._graph.query(query) # ["name":"","lat":..,"lon":..,"labels":[".."]},...]
-        except Exception as e:
-            cprint(f"An error occurred creating visualizations: {e}.", "red")
-        
-        # Follium map
-        html_out = helper_folium.create_map_from_rows(filename=directory+"folium.html",rows=records,center_coordinates=[40.4168, -3.7038])
-        # Leaflet map
-        helper_leaflet.create_map_from_rows(filename=directory+"leaflet.html", rows=records, center_coordinates=[40.4168, -3.7038])
-
-        return html_out
     
     @classmethod
     def neo4j_KGRAG_search(

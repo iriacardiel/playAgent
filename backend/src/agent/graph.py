@@ -23,9 +23,6 @@ from utils.logger import log_token_usage, log_llm_input
 from termcolor import cprint
 from services.neo4j import Neo4jService
 
-VERBOSE = bool(int(Settings.VERBOSE))
-
-
 # --------------------------
 # LLM
 # --------------------------
@@ -47,7 +44,9 @@ if Settings.MODEL_SERVER == "OPENAI":
         temperature=0,
     )
  
-# Set the model for the Neo4j Retrieval Chains   
+# --------------------------
+# Neo4J LLM Configuration
+# --------------------------
 Neo4jService.set_llm(llm=llm)
 
 # --------------------------
@@ -55,7 +54,7 @@ Neo4jService.set_llm(llm=llm)
 # --------------------------
 CDU = "agent_kgRAG" # agent_memory / agent_kgRAG
 
-tools = [
+base_tools = [
     get_list_of_tasks,
     add_task,
     check_current_time,
@@ -66,6 +65,11 @@ memory_tools = [
     save_short_term_memory,
     retrieve_long_term_memory,
 ]
+
+if CDU == "agent_memory":
+    tools = base_tools + memory_tools
+elif CDU == "agent_kgRAG":
+    tools = base_tools
 
 # --------------------------
 # MEMORY
@@ -88,28 +92,25 @@ checkpointer = create_memory_checkpointer(
 # --------------------------
 class Agent:
     def __init__(
-        self, llm: BaseChatModel, tools: list, memory_tools: list, checkpointer: SqliteSaver | None
+        self, llm: BaseChatModel, tools: list, checkpointer: SqliteSaver | None
     ):
         """Initialize the agent with an LLM and tools."""
         # Store the LLM instance
         self.llm = llm
-        
-        if CDU == "agent_memory":
-            self.tools = tools + memory_tools
-        elif CDU == "agent_kgRAG":
-            self.tools = tools
 
         self.checkpointer = checkpointer
 
         # Bind the LLM with tools
-        self.llm_with_tools = llm.bind_tools(self.tools)
+        self.llm_with_tools = llm.bind_tools(tools)
 
+    # --------------------------
+    # BUILD & COMPILE GRAPH
+    # --------------------------
     def build_graph(self):
         """Create the agent graph."""
-        # --------------------------
-        # BUILD GRAPH
-        # --------------------------
+
         builder = StateGraph(AgentState)
+        
         builder.add_node("LLM_assistant", self.LLM_node)
         builder.add_node("tools", ToolNode(self.tools, handle_tool_errors=False))
 
@@ -118,22 +119,22 @@ class Agent:
             "LLM_assistant", tools_condition, path_map=["tools", "__end__"]
         )
 
-        # --------------------------
-        # COMPILE GRAPH
-        # --------------------------
         return builder.compile(checkpointer=self.checkpointer, debug=False)
 
     # --------------------------
     # NODES
     # --------------------------
+    
     # LLM Assistant Node
     def LLM_node(self, state: AgentState):
         """LLM Assistant Node - Handles LLM interactions."""
-        messages_list = self.filtermessages( 20, state["messages"])
-
         # Apply custom filtering
+        messages_list = self.filtermessages( 20, state["messages"])
+        
+        # Build LLM input
+        SYSTEM_PROMPT = get_system_prompt(state.get("short_term_memories", []), cdu = CDU)
         llm_input = [
-            SystemMessage(content=get_system_prompt(state.get("short_term_memories", []), cdu = CDU)),
+            SystemMessage(content=SYSTEM_PROMPT),
         ] + messages_list
 
         log_llm_input(llm_input)
@@ -149,6 +150,8 @@ class Agent:
     # --------------------------
     # AGENT UTILS
     # --------------------------
+    
+    # Messages filter
     def filtermessages(self, last :int, allmessages: list):
         """Filter messages to keep only relevant ones."""
 
@@ -173,5 +176,6 @@ class Agent:
 
 
 # --------------------------
-# AGENT
-graph = Agent(llm, tools, memory_tools, checkpointer).build_graph()
+# AGENT INSTANCE
+# --------------------------
+graph = Agent(llm, tools, checkpointer).build_graph()
