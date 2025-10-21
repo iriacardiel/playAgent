@@ -276,7 +276,8 @@ def get_social_data(
         print(colored("Executing cypher query synchronously...", "blue"))
 
         # Use direct execution to completely bypass any streaming mechanisms
-        response = json.dumps(Neo4jService.get_cypher_chain().invoke(question))
+        #response = json.dumps(Neo4jService.get_cypher_chain().invoke(question))
+        response = json.dumps(Neo4jService.get_cypher_manual_chain().invoke(question))
 
         print(colored(f"CypherChain response completed: {response[:100]}...", "green"))
 

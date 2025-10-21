@@ -87,6 +87,51 @@ class Neo4jService:
             )
 
         return cls._cypherChain
+    
+    @classmethod
+    def get_cypher_manual_chain(cls) -> dict:
+        """Get the Cypher QA chain for querying the Neo4j graph."""
+        if not cls._cypherChain:
+            if not cls._llm:
+                raise ValueError("LLM not set for Cypher QA chain")
+
+            def execute_query(question: str) -> dict:
+                graph = cls.get_graph()
+                
+                # Step 1: Generate Cypher query from natural language using LLM
+                prompt_text = CYPHER_GENERATION_PROMPT.format(question=question)
+                cypher_response = cls._llm.invoke(prompt_text)
+                cypher_query = cypher_response.content if hasattr(cypher_response, 'content') else str(cypher_response)
+                
+                # Step 2: Clean up the generated Cypher query
+                cypher_query = cypher_query.strip()
+                if cypher_query.startswith("```cypher"):
+                    cypher_query = cypher_query[9:]
+                if cypher_query.startswith("```"):
+                    cypher_query = cypher_query[3:]
+                if cypher_query.endswith("```"):
+                    cypher_query = cypher_query[:-3]
+                cypher_query = cypher_query.strip()
+                
+                # Step 3: Add LIMIT clause if not present
+                if "LIMIT" not in cypher_query.upper():
+                    cypher_query += " LIMIT 100"
+                
+                # Step 4: Execute the Cypher query
+                results = graph.query(cypher_query)
+                
+                # Step 5: Return results
+                return {
+                    'result': results,
+                    'intermediate_steps': [
+                        {'cypher_query': cypher_query}
+                    ],
+                    'question': question
+                }
+            
+            cls._cypherChain = execute_query
+
+        return cls._cypherChain
 
     @classmethod
     def get_graph(cls):
