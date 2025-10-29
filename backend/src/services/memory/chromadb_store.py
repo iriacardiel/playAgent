@@ -15,18 +15,26 @@ from pathlib import Path
 from termcolor import cprint
 import os
 
-def get_embedding_ollama(text: str, model="nomic-embed-text") -> list[float]:
+def get_embedding_ollama(text: str, model="nomic-embed-text") -> list[float] | None:
+    """
+    Get embedding from Ollama API. Returns None if Ollama is not available.
+    This allows ChromaDB to fall back to its default embedding function.
+    """
     ollama_host = os.environ.get("OLLAMA_HOST", "http://localhost:11434") # IN DOCKER IT IS "http://ollama:11434"
     url = f"{ollama_host}/api/embed"
-    print(url)
-    payload = {
-        "model": model,
-        "input": text
-    }
-    response = requests.post(url, json=payload)
-    response.raise_for_status()
-    data = response.json()
-    return data.get("embeddings", [])[0]
+    try:
+        payload = {
+            "model": model,
+            "input": text
+        }
+        response = requests.post(url, json=payload, timeout=5)
+        response.raise_for_status()
+        data = response.json()
+        return data.get("embeddings", [])[0]
+    except (requests.exceptions.RequestException, requests.exceptions.Timeout) as e:
+        # Ollama not available - return None so ChromaDB can use its default embedding function
+        cprint(f"Ollama embedding service not available ({url}): {e}. Using ChromaDB default embeddings.", "yellow")
+        return None
 
 # Testing this is the same
 #get_embedding_ollama("This is a sample text") == ollama.embed("nomic-embed-text", "This is a sample text").get("embeddings", [])[0]
@@ -41,11 +49,28 @@ class ChromaVectorMemoryStore:
         self.path = Path(path + vector_store)
         self.path.mkdir(parents=True, exist_ok=True)
         
+        # Check if Ollama is available to decide embedding strategy
+        test_embedding = get_embedding_ollama("test")
+        self.use_ollama = test_embedding is not None
+        
         # Initialize Vector Store
         self.client = chromadb.PersistentClient(path=self.path, settings=chromadb.config.Settings(allow_reset=True))
         
         if collection_name is not None:
-            self.collection = self.client.get_or_create_collection(name=collection_name)
+            if self.use_ollama:
+                # Use manual embeddings from Ollama
+                self.collection = self.client.get_or_create_collection(name=collection_name)
+                cprint("Using Ollama embeddings for vector store", "green")
+            else:
+                # Use ChromaDB's default embedding function
+                # This will use the default SentenceTransformer model
+                import chromadb.utils.embedding_functions as embedding_functions
+                default_ef = embedding_functions.DefaultEmbeddingFunction()
+                self.collection = self.client.get_or_create_collection(
+                    name=collection_name,
+                    embedding_function=default_ef
+                )
+                cprint("Using ChromaDB default embedding function (Ollama not available)", "yellow")
 
             if reset_on_init:
                 cprint("Resetting vector store...", "yellow")
@@ -53,17 +78,33 @@ class ChromaVectorMemoryStore:
 
 
     def save(self, content:str, metadata=None):
-        vec = np.array(get_embedding_ollama(content), dtype="float32")
-        #print("Embedding length:", len(vec))
         unique_id = str(uuid.uuid4())
         cprint(f"Saved document with ID: {unique_id}. Content: {content}", "yellow")
 
-        self.collection.add(
-            ids=[unique_id],
-            embeddings=np.array([vec]),
-            documents=[content],
-            metadatas=[metadata or {}]
-        )
+        if self.use_ollama:
+            # Use Ollama embedding
+            vec = get_embedding_ollama(content)
+            if vec is not None:
+                self.collection.add(
+                    ids=[unique_id],
+                    embeddings=np.array([vec], dtype="float32"),
+                    documents=[content],
+                    metadatas=[metadata or {}]
+                )
+            else:
+                # Ollama failed unexpectedly, fall back to ChromaDB default
+                self.collection.add(
+                    ids=[unique_id],
+                    documents=[content],
+                    metadatas=[metadata or {}]
+                )
+        else:
+            # Use ChromaDB's default embedding function (no embeddings provided)
+            self.collection.add(
+                ids=[unique_id],
+                documents=[content],
+                metadatas=[metadata or {}]
+            )
 
     def search(self, query:str, k:int=3, include_tags:list=[]):
         # generate an embedding for the input and retrieve the most relevant doc
@@ -72,21 +113,35 @@ class ChromaVectorMemoryStore:
             cprint("No documents found in vector store.", "red")
             distances, unique_ids, metadatas, documents = [], [], [], []
         else:
-            q_vec = np.array(get_embedding_ollama(query), dtype="float32")
-
-            # Get the top k results from the collection                
             # Build filter dictionary
             filters = {}
             if include_tags:
                 filters["tags"] = {"$in": include_tags}
             
-
             # Query the collection with filtering
-            results = self.collection.query(
-                query_embeddings=[q_vec],
-                n_results=k,
-                where=None if not filters else filters,
-            )
+            if self.use_ollama:
+                # Use Ollama embedding for query
+                q_vec = get_embedding_ollama(query)
+                if q_vec is not None:
+                    results = self.collection.query(
+                        query_embeddings=[np.array(q_vec, dtype="float32")],
+                        n_results=k,
+                        where=None if not filters else filters,
+                    )
+                else:
+                    # Ollama failed, fall back to text query
+                    results = self.collection.query(
+                        query_texts=[query],
+                        n_results=k,
+                        where=None if not filters else filters,
+                    )
+            else:
+                # Use ChromaDB's default embedding function (text query)
+                results = self.collection.query(
+                    query_texts=[query],
+                    n_results=k,
+                    where=None if not filters else filters,
+                )
 
 
             distances, unique_ids, metadatas, documents = results['distances'][0], results['ids'][0], results['metadatas'][0], results['documents'][0]

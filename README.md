@@ -332,4 +332,13 @@ docker compose up --no-build -d
 
 
 
+## Troubleshooting
 
+### sh: 1: next: not found
+
+Make sure you have next installed and use version 20.0.0:
+
+```bash
+npm install -g next@20.0.
+nvm use 20
+```
