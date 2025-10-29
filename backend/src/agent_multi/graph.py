@@ -201,7 +201,7 @@ if Settings.MODEL_SERVER == "OPENAI":
         temperature=0,
     )
 
-if Settings.MODEL_SERVER == "CLAUDE":
+if Settings.MODEL_SERVER == "VERTEXAI":
     # Use Google's Chat model
     llm = ChatVertexAI(
         model=Settings.MODEL_NAME,

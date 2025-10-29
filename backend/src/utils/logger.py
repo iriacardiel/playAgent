@@ -33,7 +33,7 @@ def log_token_usage(ai_message: AIMessage, messages_list: list[Any]):
             "input_tokens": 0,
             "output_tokens": 0,
         }
-    if Settings.MODEL_SERVER == "CLAUDE":
+    if Settings.MODEL_SERVER == "VERTEXAI":
         token_usage = {
             "input_tokens": ai_message.usage_metadata.get("input_tokens", 0),
             "output_tokens": ai_message.usage_metadata.get("output_tokens", 0),
