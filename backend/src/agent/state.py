@@ -19,6 +19,14 @@ def add_dict(left, right):
     else:
         return left + [{}]
 
+def add_memories(left, right):
+    """Add memories to the list."""
+    if not left:
+        left = []
+    if not right:
+        right = []
+    return left + right
+
 
 
 # --------------------------
@@ -35,5 +43,6 @@ class AgentState(TypedDict, total=False):
     ui: Annotated[Sequence[AnyUIMessage], ui_message_reducer]
     tasks: Annotated[list[str], add_str]
     tools_used : Annotated[list[str], add_str]
-    short_term_memories: list[dict]
+    short_term_memories: Annotated[list[dict], add_memories]
+    long_term_memories: Annotated[list[dict], add_memories]
     pending_response: AnyMessage  # Buffer for LLM response before safety verification

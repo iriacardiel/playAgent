@@ -1,5 +1,6 @@
 import sqlite3
 import logging
+from datetime import datetime
 
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import AnyMessage, SystemMessage, AIMessage, HumanMessage, ToolMessage
@@ -9,6 +10,7 @@ from langchain_google_vertexai import ChatVertexAI
 from langgraph.checkpoint.sqlite import SqliteSaver
 from langgraph.graph import START, StateGraph
 from langgraph.prebuilt import ToolNode, tools_condition
+from langgraph.types import Command
 
 from agent.prompts import get_system_prompt
 from agent.prompts import get_judge_prompt
@@ -19,6 +21,7 @@ from agent.tools_and_schemas import (
     check_current_time,
     save_short_term_memory,
     retrieve_long_term_memory,
+    save_long_term_memory,
 )
 from config.settings import Settings
 from utils.logger import log_token_usage, log_llm_input
@@ -85,10 +88,12 @@ class Agent:
             "judge", self.judge_condition, path_map={"blocked": "__end__", "safe": "LLM_assistant"}
         )
         builder.add_conditional_edges(
-            "LLM_assistant", tools_condition, path_map={"tools": "tools", "__end__": "judge_final"}
+            "LLM_assistant", self.llm_condition, path_map={"tools": "tools", "judge": "judge_final"}
+        )
+        builder.add_conditional_edges(
+            "judge_final", self.judge_condition, path_map={"blocked": "__end__", "safe": "__end__", "tools": "tools"}
         )
         builder.add_edge("tools", "LLM_assistant")
-        builder.add_edge("judge_final", "__end__")
 
         # --------------------------
         # COMPILE GRAPH
@@ -105,7 +110,42 @@ class Agent:
             last_message = state["messages"][-1]
             if hasattr(last_message, 'content') and "⚠️ Content blocked" in last_message.content:
                 return "blocked"
+        
+        # Check if we just released a pending response that has tool calls
+        if state["messages"]:
+            last_message = state["messages"][-1]
+            # If the last message is an AIMessage with tool calls and it was just approved by judge
+            if hasattr(last_message, 'tool_calls') and last_message.tool_calls:
+                logger.debug("Judge condition: Safe message has tool calls, routing to tools")
+                return "tools"
+        
+        # No tool calls - safe content, end the conversation turn
+        logger.debug("Judge condition: Content is safe with no tool calls, ending turn")
         return "safe"
+    
+    def llm_condition(self, state: AgentState):
+        """Determine next step based on LLM response."""
+        # Check if we have a pending response (text response)
+        if "pending_response" in state and state["pending_response"]:
+            logger.debug("LLM condition: Found pending response, routing to judge")
+            return "judge"
+        
+        # Check if the last message has tool calls
+        if state["messages"]:
+            last_message = state["messages"][-1]
+            logger.debug(f"LLM condition: Last message type: {type(last_message)}")
+            logger.debug(f"LLM condition: Last message has type attr: {hasattr(last_message, 'type')}")
+            if hasattr(last_message, 'type'):
+                logger.debug(f"LLM condition: Last message type value: {last_message.type}")
+            logger.debug(f"LLM condition: Last message has tool_calls attr: {hasattr(last_message, 'tool_calls')}")
+            if hasattr(last_message, 'tool_calls') and last_message.tool_calls:
+                logger.debug(f"LLM condition: Found tool calls in last message, routing to tools")
+                logger.debug(f"Tool calls: {[tc.get('name', 'unknown') for tc in last_message.tool_calls]}")
+                return "tools"
+        
+        # Default to judge for safety evaluation
+        logger.debug("LLM condition: Default routing to judge")
+        return "judge"
 
     # --------------------------
     # NODES
@@ -128,16 +168,38 @@ class Agent:
         # Token count (through LangChain AIMessage)
         log_token_usage(ai_message, messages_list)
         
-        # Store the response in a temporary buffer instead of immediately adding to messages
-        # Prefix the ID to prevent frontend rendering until judge approval
-        ai_message.id = f"do-not-render-{ai_message.id}"
-        logger.debug("LLM response generated, storing in buffer for safety verification")
-        return {"pending_response": ai_message}
+        # Check if the response has text content (to be checked by judge)
+        has_content = False
+        if hasattr(ai_message, 'content'):
+            content = ai_message.content
+            if content:
+                if isinstance(content, list):
+                    has_content = any(item for item in content if (isinstance(item, dict) and item.get('type') == 'text') or (isinstance(item, str) and item.strip()))
+                elif isinstance(content, str) and content.strip():
+                    has_content = True
+        
+        # Check if the response contains tool calls
+        has_tool_calls = hasattr(ai_message, 'tool_calls') and ai_message.tool_calls
+        
+        # If message has text content, it MUST be checked by judge_final first (even if it has tool calls)
+        if has_content:
+            ai_message.id = f"do-not-render-{ai_message.id}"
+            logger.debug("LLM response has text content, storing in buffer for safety verification")
+            return {"pending_response": ai_message}
+        elif has_tool_calls:
+            # Only tool calls, no text content - safe to execute tools directly
+            logger.debug("LLM response has only tool calls (no text), routing directly to tools")
+            return {"messages": [ai_message]}
+        else:
+            # No content and no tool calls - empty response, store in pending for safety check anyway
+            ai_message.id = f"do-not-render-{ai_message.id}"
+            logger.debug("LLM response is empty, storing in buffer for safety verification")
+            return {"pending_response": ai_message}
     
     def _evaluate_content_safety(self, message) -> bool:
         """Evaluate if a message's content is safe using the judge LLM."""
         logger.debug(f"Evaluating safety of message type: {type(message)}")
-        logger.debug(f"Message content: {getattr(message, 'content', 'No content')[:150]}...")
+        logger.debug(f"Message content: {getattr(message, 'content', 'No content')[:300]}...")
         
         # Extract content text
         if hasattr(message, 'content'):
@@ -218,6 +280,13 @@ class Agent:
                 logger.debug("Content is unsafe, replacing with safety warning")
                 blocked_message = AIMessage(content=output)
                 return {"messages": [blocked_message], "pending_response": None}
+        
+        # Check if the last message is a tool message (from tool execution)
+        if state["messages"]:
+            last_message = state["messages"][-1]
+            if isinstance(last_message, ToolMessage):
+                logger.debug("Tool message detected, passing through without safety evaluation")
+                return {}
         
         # Fallback to original logic for other cases (like initial user input check)
         last_messages = self.filtermessages(1, state["messages"])
@@ -326,6 +395,7 @@ tools = [
 memory_tools = [
     save_short_term_memory,
     retrieve_long_term_memory,
+    save_long_term_memory,
 ]
 
 
