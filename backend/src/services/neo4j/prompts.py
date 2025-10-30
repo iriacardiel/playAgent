@@ -1,4 +1,4 @@
-from langchain.prompts import PromptTemplate
+from langchain_core.prompts import PromptTemplate
 
 
 SIMPLE_QA_PROMPT_TEMPLATE = """

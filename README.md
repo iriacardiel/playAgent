@@ -1,6 +1,6 @@
 # playAgent
 
-This repository is designed to develop an AI Agent, with short and long-term memory capabilities, tool usage, and a user-friendly interface. 
+This repository is designed to develop an AI Agent, with short and long-term memory capabilities, tool usage, and a user-friendly interface.
 
 You can call it DORI!
 
@@ -18,10 +18,49 @@ This repository is an ongoing work in progress.
 
 ## Set up and start
 
-### Ollama setup 
+```bash
+# Clone and setup
+git clone <repository-url>
+cd playAgent
+./setup.sh
+```
+
+That's it! The setup script will:
+
+- Create environment configuration
+- Download AI models
+- Start all services with Docker
+
+**Access URLs:**
+
+- Frontend: http://localhost:3000
+- Backend: http://localhost:2024
+- LangGraph Dev UI: http://localhost:2924
+- Neo4j: http://localhost:7474
+- NeoDash: http://localhost:5005
+
+## Services 🐳
+
+- **Ollama**: AI model server
+- **Backend**: LangGraph API server
+- **Frontend**: Next.js web interface
+- **Neo4j**: Graph database for memory
+- **NeoDash**: Database management UI
+
+## Management Commands
 
 ```bash
-bash start-ollama.sh # to start ollama server, make sure you have ollama installed
+# View logs
+docker-compose logs -f
+
+# Stop services
+docker-compose down
+
+# Restart services
+docker-compose restart
+
+# Check status
+docker-compose ps
 ```
 
 ```bash

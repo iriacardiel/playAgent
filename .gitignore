@@ -2,3 +2,32 @@ ollama-custom/.ollama/**
 tmp/**
 
 agent-stack-latest.tar
+
+# Environment files
+**/.env
+!**/.env.example
+
+# Development artifacts
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Node.js
+node_modules/
+.npm
+.pnpm-debug.log*
+
+# Next.js
+.next/
+out/
+
+# Hugging Face models cache
+.huggingface/

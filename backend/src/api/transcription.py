@@ -12,13 +12,22 @@ from services.stt import STTModel
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
-#cprint(f"Using STT Model: {Settings.STT_MODEL} on device: {Settings.STT_DEVICE}", "red")
+# cprint(f"Using STT Model: {Settings.STT_MODEL} on device: {Settings.STT_DEVICE}", "red")
 
-stt_model = STTModel(
-    model_id=Settings.STT_MODEL,
-    device=Settings.STT_DEVICE,
-    language=Settings.STT_LANGUAGE,
-)
+# Lazy load the STT model to avoid import-time errors
+stt_model = None
+
+
+def get_stt_model():
+    """Get or initialize the STT model lazily."""
+    global stt_model
+    if stt_model is None:
+        stt_model = STTModel(
+            model_id=Settings.STT_MODEL,
+            device=Settings.STT_DEVICE,
+            language=Settings.STT_LANGUAGE,
+        )
+    return stt_model
 
 
 @router.post("/transcribe")
@@ -62,7 +71,7 @@ async def transcribe_audio(audio: UploadFile = File(...)):
                 )
 
             # Transcribe the audio using Whisper from transformers
-            transcription = stt_model.transcribe_audio(temp_file_path)
+            transcription = get_stt_model().transcribe_audio(temp_file_path)
             logger.info(f"Transcription: {transcription}")
 
             if not transcription:

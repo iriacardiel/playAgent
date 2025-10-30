@@ -26,21 +26,21 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+NEO4J_HOST = Settings.NEO4J_HOST
 NEO4J_URI_PORT = Settings.NEO4J_URI_PORT
-NEO4J_URI ="bolt://localhost:"+ NEO4J_URI_PORT
+NEO4J_URI = f"bolt://{NEO4J_HOST}:{NEO4J_URI_PORT}"
 NEO4J_USER = Settings.NEO4J_USER
 NEO4J_PASSWORD = Settings.NEO4J_PASSWORD
-EMB_PROPERTY =Settings.EMB_PROPERTY
+EMB_PROPERTY = Settings.EMB_PROPERTY
 EMB_DIMENSION = Settings.EMB_DIMENSION
-EMB_SIMILARITY =Settings.EMB_SIMILARITY
+EMB_SIMILARITY = Settings.EMB_SIMILARITY
 
 
 # -----------------------------------------------------------------------------
 # Service
 # -----------------------------------------------------------------------------
 class Neo4jService:
-    """Neo4j service
-    """
+    """Neo4j service"""
 
     _initialized = False
     _graph: Neo4jGraph = None
@@ -101,68 +101,65 @@ class Neo4jService:
         """Set the LLM for the Cypher QA chain."""
         cls._llm = llm
         cls._cypherChain = None
-        
-        
+
     @classmethod
     def reset_graph(cls) -> None:
-        
         try:
             cls._graph.query("CALL apoc.schema.assert({}, {})")
             cls._graph.query("MATCH (n) DETACH DELETE n")
         except Exception as e:
             cprint(f"An error occurred restoring graph: {e}.", "red")
-            
+
     @classmethod
     def show_schema(cls) -> None:
         # Refresh and print the LLM-friendly schema summary
         cls._graph.refresh_schema()
-        print(cls._graph.schema) # readable string: labels, rel-types, properties
+        print(cls._graph.schema)  # readable string: labels, rel-types, properties
 
-    
-    @classmethod  
-    def create_constraint(cls, node_label:str="", node_unique_key:str=""):
-        
+    @classmethod
+    def create_constraint(cls, node_label: str = "", node_unique_key: str = ""):
         try:
-            
             constraint_name = node_label.lower() + "_unique"
             query = f"""
             CREATE CONSTRAINT {constraint_name} IF NOT EXISTS
             FOR (p:{node_label}) REQUIRE p.{node_unique_key} IS UNIQUE
             """
             cls._graph.query(query)
-        
+
         except Exception as e:
-            cprint(f"An error occurred creating constraint: {e}.", "red")    
-    
-    @classmethod  
+            cprint(f"An error occurred creating constraint: {e}.", "red")
+
+    @classmethod
     def vectorize_property(
         cls,
-        element: Literal["node", "relationship"]="node",
-        node_label: Optional[str]="",
-        rel_type: Optional[str]="",
-        source_property: str=""
+        element: Literal["node", "relationship"] = "node",
+        node_label: Optional[str] = "",
+        rel_type: Optional[str] = "",
+        source_property: str = "",
     ) -> None:
         """
         Generate and store vector embeddings for specified property of nodes or relationships.
-        
+
         This function processes all nodes or relationships of a given label or type that have
         non-empty values for the specified property and generates embeddings for them.
         Only processes items that don't already have embeddings.
-        
+
         Args:
             element: Type of graph element - either "node" or "relationship"
             node_label: Label of the node to process
             rel_type: Type of the relationship to process
             source_property: Name of the property to vectorize
-            
+
         Note:
             Only one of 'node_label' or 'rel_type' must be provided.
         """
-        
+
         # Input control
         try:
             if node_label and rel_type:
-                raise ValueError("Only one of 'node_label' or 'rel_type' must be provided.")
+                raise ValueError(
+                    "Only one of 'node_label' or 'rel_type' must be provided."
+                )
             elif element == "node" and not node_label:
                 raise ValueError("Provide 'node_label' for element 'node'.")
             elif element == "relationship" and not rel_type:
@@ -170,9 +167,11 @@ class Neo4jService:
 
             # Vectorize node property
             if element == "node":
+                cprint(
+                    f"\nGenerating embeddings for (n:{node_label}) on n.{source_property}",
+                    "green",
+                )
 
-                cprint(f"\nGenerating embeddings for (n:{node_label}) on n.{source_property}", "green")
-                
                 # Query for nodes without embeddings
                 query = f"""
                     MATCH (n:{node_label})
@@ -184,32 +183,33 @@ class Neo4jService:
                         n.uuid AS uuid,
                         n.{source_property} AS txt
                 """
-                
+
                 records = list(cls._graph.query(query))
-                
+
                 # Set embedding property for each record
                 count = 0
                 for record in records:
-                    
                     # Create embedding vector
                     vec = helper_ollama.create_embedding(input_text=record["txt"])
-                    
+
                     # Update node with embedding
                     update_query = f"""
                         MATCH (n:{node_label} {{uuid: $uuid}})
                         SET n.embedding = $vec
                     """
                     cls._graph.query(update_query, {"uuid": record["uuid"], "vec": vec})
-                    
+
                     # Debug output
-                    count+=1
+                    count += 1
                     print(f" Updated {count} embeddings")
 
-            # Vectorize relationship property 
+            # Vectorize relationship property
             elif element == "relationship":
+                cprint(
+                    f"\nGenerating embeddings for [r:{rel_type}] on r.{source_property}",
+                    "green",
+                )
 
-                cprint(f"\nGenerating embeddings for [r:{rel_type}] on r.{source_property}", "green")
-                
                 # Query for relationships without embeddings
                 query = f"""
                     MATCH ()-[r:{rel_type}]-()
@@ -221,38 +221,39 @@ class Neo4jService:
                         r.uuid AS uuid, 
                         r.{source_property} AS txt
                 """
-                
+
                 records = list(cls._graph.query(query))
-                
+
                 # Set embedding property for each record
                 count = 0
                 for record in records:
-                    
                     # Create embedding vector
                     vec = helper_ollama.create_embedding(input_text=record["txt"])
-                    
+
                     # Update relationship with embedding
                     update_query = f"""
                         MATCH ()-[r:{rel_type} {{uuid: $uuid}}]-()
                         SET r.embedding = $vec
                     """
                     cls._graph.query(update_query, {"uuid": record["uuid"], "vec": vec})
-                    
+
                     # Debug output
-                    count+=1
+                    count += 1
                     print(f" Updated {count} embeddings")
-        
+
         except Exception as e:
             cprint(f"An error occurred vectorizing properties {e}.", "red")
 
-    @classmethod  
-    def create_vector_index(cls, index_name: str = '',
-                            node_label: Optional[str] = '',
-                            relation_type: Optional[str] = '',
-                            emb_property: Optional[str] = EMB_PROPERTY,
-                            dim: Optional[int] = EMB_DIMENSION,
-                            similarity: Optional[str] = EMB_SIMILARITY):
-
+    @classmethod
+    def create_vector_index(
+        cls,
+        index_name: str = "",
+        node_label: Optional[str] = "",
+        relation_type: Optional[str] = "",
+        emb_property: Optional[str] = EMB_PROPERTY,
+        dim: Optional[int] = EMB_DIMENSION,
+        similarity: Optional[str] = EMB_SIMILARITY,
+    ):
         try:
             if relation_type:
                 # For relationship index
@@ -270,13 +271,13 @@ class Neo4jService:
                 """
             else:
                 raise ValueError("Either node_label or relation_type must be provided")
-            
+
             cls._graph.query(query)
             print(f"Successfully created index {index_name}.")
-            
+
         except Exception as e:
-            cprint(f"An error occurred creating vector index {e}.","red")
-    
+            cprint(f"An error occurred creating vector index {e}.", "red")
+
     @classmethod
     def show_vector_indexes(cls):
         # Show created vector indexes
@@ -284,17 +285,19 @@ class Neo4jService:
         idx = list(results)
         cprint(f"\nFound {len(idx)} vector index entries.", "green")
         for r in idx:
-            cprint("-"*20,"green")
-            pprint(r)  
-            
+            cprint("-" * 20, "green")
+            pprint(r)
+
     @classmethod
     def create_node(
         cls,
         label: str,
         props: dict,
-        text_template: str | None = None,   # e.g. "{name} is a {age} of {gender} years old..."
+        text_template: str
+        | None = None,  # e.g. "{name} is a {age} of {gender} years old..."
         text_key: str = "text",
-        location_keys: tuple[str, str] | None = None,  # e.g. ("latitude","longitude") in props
+        location_keys: tuple[str, str]
+        | None = None,  # e.g. ("latitude","longitude") in props
         uuid_key: str = "uuid",
         vectorize: bool = True,
         source_property: str = "text",
@@ -317,7 +320,9 @@ class Neo4jService:
                 computed_props[text_key] = text_template.format(**props)
             except KeyError as e:
                 missing = e.args[0]
-                raise KeyError(f"Missing key {missing!r} required by text_template") from e
+                raise KeyError(
+                    f"Missing key {missing!r} required by text_template"
+                ) from e
 
         # 2) Pull out location if asked, so we can call point($location) in Cypher
         location_param = None
@@ -357,12 +362,11 @@ class Neo4jService:
         # 6) Optional vectorization
         if vectorize:
             cls.vectorize_property(
-                element="node",      # "node"
-                node_label= label,
+                element="node",  # "node"
+                node_label=label,
                 source_property=source_property,
             )
-        
-    
+
     @classmethod
     def create_relationship(
         cls,
@@ -393,7 +397,7 @@ class Neo4jService:
         ]
         if rel_props:
             query_lines.append("ON CREATE SET r += $rel_props")
-        
+
         query_lines.append("RETURN a, r, b")
 
         params = {
@@ -405,7 +409,9 @@ class Neo4jService:
 
         try:
             cls._graph.query("\n".join(query_lines), params)
-            print(f"Successfully created {rel_type}: {{start: {start_value}, end: {end_value}, rel_props: {rel_props or {}}}}")
+            print(
+                f"Successfully created {rel_type}: {{start: {start_value}, end: {end_value}, rel_props: {rel_props or {}}}}"
+            )
         except Exception as e:
             cprint(f"An error occurred creatin relationship: {e}.", "red")
             return
@@ -417,33 +423,39 @@ class Neo4jService:
                 rel_type=rel_type,
                 source_property=source_property,
             )
-        
-        
-    @classmethod 
+
+    @classmethod
     def get_map_features(cls):
-                
         # --- Query your Neo4j (adapt to your driver) ---
         # Nodes with coordinates
         node_query = """
         MATCH (n)
-        WHERE n.location.latitude IS NOT NULL AND n.location.longitude IS NOT NULL
-        RETURN n.uuid AS id, n.name AS name, labels(n) AS labels,
+        WHERE n.location IS NOT NULL 
+          AND n.location.latitude IS NOT NULL 
+          AND n.location.longitude IS NOT NULL
+        RETURN coalesce(n.uuid, elementId(n)) AS id, n.name AS name, labels(n) AS labels,
                n.location.latitude AS lat, n.location.longitude AS lon
         """
 
         # Relationships where both ends have coordinates
         rel_query = """
         MATCH (a)-[r]-(b)
-        WHERE a.location.latitude IS NOT NULL AND a.location.longitude IS NOT NULL
-          AND b.location.latitude IS NOT NULL AND b.location.longitude IS NOT NULL
-        RETURN a.uuid AS src_id, b.uuid AS dst_id, type(r) AS rel_type,
+        WHERE a.location IS NOT NULL 
+          AND a.location.latitude IS NOT NULL 
+          AND a.location.longitude IS NOT NULL
+          AND b.location IS NOT NULL
+          AND b.location.latitude IS NOT NULL 
+          AND b.location.longitude IS NOT NULL
+        RETURN coalesce(a.uuid, elementId(a)) AS src_id, 
+               coalesce(b.uuid, elementId(b)) AS dst_id, 
+               type(r) AS rel_type,
                a.location.latitude AS a_lat, a.location.longitude AS a_lon,
                b.location.latitude AS b_lat, b.location.longitude AS b_lon
         """
 
         # Replace `graph.query` with your actual execution:
         nodes = cls._graph.query(node_query)  # -> list[dict]
-        rels  = cls._graph.query(rel_query)   # -> list[dict]
+        rels = cls._graph.query(rel_query)  # -> list[dict]
 
         # --- Build GeoJSON for nodes ---
         node_features = []
@@ -497,48 +509,59 @@ class Neo4jService:
                 },
             }
             edge_features.append(feat)
-        
-        
+
         return node_features, edge_features
-    
+
     @classmethod
-    def create_visualizations(cls, directory:str=""):
-        
+    def create_visualizations(cls, directory: str = ""):
         try:
             query = """
             MATCH (n)
+            WHERE n.location IS NOT NULL
+              AND n.location.latitude IS NOT NULL
+              AND n.location.longitude IS NOT NULL
             RETURN 
             n.name AS name, labels(n) AS labels,
             n.location.latitude AS lat, 
             n.location.longitude AS lon
             """
-            
-            records = cls._graph.query(query) # ["name":"","lat":..,"lon":..,"labels":[".."]},...]
+
+            records = cls._graph.query(
+                query
+            )  # ["name":"","lat":..,"lon":..,"labels":[".."]},...]
         except Exception as e:
             cprint(f"An error occurred creating visualizations: {e}.", "red")
-        
+
         # Follium map
-        html_out = helper_folium.create_map_from_rows(filename=directory+"folium.html",rows=records,center_coordinates=[40.4168, -3.7038])
+        html_out = helper_folium.create_map_from_rows(
+            filename=directory + "folium.html",
+            rows=records,
+            center_coordinates=[40.4168, -3.7038],
+        )
         # Leaflet map
-        helper_leaflet.create_map_from_rows(filename=directory+"leaflet.html", rows=records, center_coordinates=[40.4168, -3.7038])
+        helper_leaflet.create_map_from_rows(
+            filename=directory + "leaflet.html",
+            rows=records,
+            center_coordinates=[40.4168, -3.7038],
+        )
 
         return html_out
-    
+
     @classmethod
     def neo4j_KGRAG_search(
         cls,
         query: str,
-        index: str, 
-        source_property : str,
-        main_property : str,
+        index: str,
+        source_property: str,
+        main_property: str,
         top_k: int,
     ) -> Dict[str, Any]:
         """
         Perform KG RAG retrieval: vector search + context preparation for agent consumption
-        
+
         - Combines vector search with context formatting specifically for RAG (Retrieval-Augmented Generation) use cases.
         - Searches for the most similar nodes or relationships to a given query using Neo4j's vector index capabilities.
-        
+
         Args:
             element: Type of element to search - "node" or "relationship"
             node_label: Label of the node to process
@@ -548,23 +571,24 @@ class Neo4jService:
             source_property: Property containing the text content to retrieve
             main_property: Property that best represents the a node (name, title, etc.). It is used to build the context for the LLM.
             top_k: Number of most similar results to return
-            
+
         Returns:
             Dictionary containing structured RAG context ready for agent consumption
 
         """
-        
+
         if "node" in index:
             element = "node"
         elif "relationship" in index:
             element = "relationship"
         else:
-            raise ValueError("Index name does not provide enough information about element type.")
-            
-        
+            raise ValueError(
+                "Index name does not provide enough information about element type."
+            )
+
         # (1) Generate embedding for the search query
         query_embedding = helper_ollama.create_embedding(query)
-        
+
         # (2) Build default retrieval query based on element type
         if element == "node":
             default_vector_search_query = f"""
@@ -580,7 +604,7 @@ class Neo4jService:
                     
                 ORDER BY score DESC
             """
-            
+
             vector_search_query = f"""
                 CALL db.index.vector.queryNodes($index_name, $top_k, $query_embedding)
                 YIELD node, score
@@ -605,9 +629,8 @@ class Neo4jService:
                     
                 ORDER BY score DESC
             """
-            
+
         elif element == "relationship":
-            
             default_vector_search_query = f"""
                 CALL db.index.vector.queryRelationships($index_name, $top_k, $query_embedding) 
                 YIELD relationship AS r, score
@@ -638,91 +661,93 @@ class Neo4jService:
             ORDER BY score DESC
             """
         else:
-            raise ValueError(f"Invalid element type: {element}. Must be 'node' or 'relationship'")
-        
+            raise ValueError(
+                f"Invalid element type: {element}. Must be 'node' or 'relationship'"
+            )
+
         # (3) Execute search query
-        
+
         search_parameters = {
-            "element" : element, # not used
-            "source_property": source_property, # not used
+            "element": element,  # not used
+            "source_property": source_property,  # not used
             "main_property": main_property,
-            "index_name": index, 
+            "index_name": index,
             "top_k": top_k,
-            "query_embedding": query_embedding
+            "query_embedding": query_embedding,
         }
-        
+
         cprint(f"\nRunning vector search query to retrieve context.", "blue")
         raw_results = cls._graph.query(vector_search_query, search_parameters)
-        
+
         if isinstance(raw_results, list):
             raw_search_results = raw_results
         else:
             raw_search_results = []
             for r in raw_results:
                 raw_search_results.append(dict(r))
-            
+
         # (4) Process results for RAG consumption into a combined_context for the LLM
 
         processed_search_results = []
         combined_context = ""
-        
+
         for i, result in enumerate(list(raw_results)):
-            
             result_dict = dict(result)
-            
-            score = round(result_dict.get('score', 0.0), 3)
-            node_label = result_dict.get('label','')
-            rel_type = result_dict.get('type','')
-            properties = result_dict.get('properties_dict',{})
-            properties_str = ''.join(f"\n-{k}: {v}" for k, v in properties.items() if k not in [source_property])
-            text_content = properties.get(source_property,'')
-            facts = result_dict.get('facts', '')
-            facts_str = ''.join(f"\n-{f}" for f in facts)
-            
+
+            score = round(result_dict.get("score", 0.0), 3)
+            node_label = result_dict.get("label", "")
+            rel_type = result_dict.get("type", "")
+            properties = result_dict.get("properties_dict", {})
+            properties_str = "".join(
+                f"\n-{k}: {v}"
+                for k, v in properties.items()
+                if k not in [source_property]
+            )
+            text_content = properties.get(source_property, "")
+            facts = result_dict.get("facts", "")
+            facts_str = "".join(f"\n-{f}" for f in facts)
+
             if element == "node":
                 processed_result = {
                     "index": i,
                     "score": score,
                     "node_label": node_label,
                     "properties": properties,
-                    "facts" : facts
+                    "facts": facts,
                 }
-                combined_context += f"RESULT #{i+1}: {node_label[0]} node\nSCORE: {score}\nSOURCE TEXT: {text_content}\nPROPERTIES:{properties_str}\nFACTS:{facts_str}\n{'-'*40}\n"
+                combined_context += f"RESULT #{i + 1}: {node_label[0]} node\nSCORE: {score}\nSOURCE TEXT: {text_content}\nPROPERTIES:{properties_str}\nFACTS:{facts_str}\n{'-' * 40}\n"
 
             elif element == "relationship":
-
                 processed_result = {
                     "index": i,
                     "score": score,
                     "relationship_type": rel_type,
                     "properties": properties,
-                    "facts" : facts
+                    "facts": facts,
                 }
-                combined_context += f"RESULT #{i+1}: {rel_type} relationship\nSCORE: {score}\nSOURCE TEXT: {text_content}\nPROPERTIES:{properties_str}\nFACTS:{facts_str}\n{'-'*40}\n"
+                combined_context += f"RESULT #{i + 1}: {rel_type} relationship\nSCORE: {score}\nSOURCE TEXT: {text_content}\nPROPERTIES:{properties_str}\nFACTS:{facts_str}\n{'-' * 40}\n"
 
-            
             processed_search_results.append(processed_result)
-        
+
         # Return structured context for agent
         output = {
             "query": query,
             "total_results": len(processed_search_results),
-            "raw_search_results" : raw_search_results,
+            "raw_search_results": raw_search_results,
             "processed_search_results": processed_search_results,
-            "combined_context": combined_context, # <<<<< LLM Context
+            "combined_context": combined_context,  # <<<<< LLM Context
             "search_metadata": {
                 "element": element,
                 "source_property": source_property,
                 "index_used": index,
                 "top_k": top_k,
-            }
+            },
         }
 
         return output
 
 
 async def main() -> None:
-
     await Neo4jService.initialize()
 
     while True:

@@ -25,6 +25,7 @@ class Settings:
     SOFTWARE_VERSION = os.environ.get("SOFTWARE_VERSION")
     
     NEO4J_DATABASE = os.environ.get("NEO4J_DATABASE", "neo4j") 
+    NEO4J_HOST=os.environ.get("NEO4J_HOST", "neo4j")  # Default to service name for Docker
     NEO4J_USER=os.environ.get("NEO4J_USER", "neo4j")
     NEO4J_PASSWORD=os.environ.get("NEO4J_PASSWORD", "test1234")
     NEO4J_URI_PORT=os.environ.get("NEO4J_URI_PORT", "7687")

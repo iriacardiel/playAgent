@@ -25,7 +25,6 @@ class STTModel:
                 dtype=torch_dtype,
                 low_cpu_mem_usage=True,
                 use_safetensors=True,
-                local_files_only=True,
             )
             processor = AutoProcessor.from_pretrained(model_id)
 
