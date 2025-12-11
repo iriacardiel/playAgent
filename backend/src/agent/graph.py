@@ -1,21 +1,23 @@
-import sqlite3
 import logging
-from datetime import datetime
+import re
+import sqlite3
 
 from langchain_core.language_models.chat_models import BaseChatModel
-from langchain_core.messages import AnyMessage, SystemMessage, AIMessage, HumanMessage, ToolMessage
+from langchain_core.messages import (
+    AIMessage,
+    SystemMessage,
+    ToolMessage,
+)
 from langchain_ollama import ChatOllama
 from langchain_openai import ChatOpenAI
 from langchain_google_vertexai import ChatVertexAI
 from langgraph.checkpoint.sqlite import SqliteSaver
 from langgraph.graph import START, StateGraph
 from langgraph.prebuilt import ToolNode, tools_condition
-from langgraph.types import Command
 
-from agent.prompts import get_system_prompt
-from agent.prompts import get_judge_prompt
+from agent.prompts import JUDGE_PROMPT, SYSTEM_PROMPT
 from agent.state import AgentState
-from agent.tools_and_schemas import (
+from agent.tools import (
     get_list_of_tasks,
     add_task,
     check_current_time,
@@ -25,15 +27,77 @@ from agent.tools_and_schemas import (
     save_long_term_memory,
 )
 from config.settings import Settings
-from logs.log_utils import log_token_usage
-from termcolor import colored
+from services.neo4j import Neo4jService
 
-VERBOSE = bool(int(Settings.VERBOSE))
 
 # Set up logger
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
+# --------------------------
+# LLM
+# --------------------------
+LOG_METRICS = bool(int(Settings.LOG_METRICS))
+ENABLE_JUDGE = bool(int(Settings.ENABLE_JUDGE))
+
+
+if Settings.MODEL_SERVER == "OLLAMA":
+
+    llm = ChatOllama(
+        model=Settings.MODEL_NAME,
+        temperature=0,
+        num_ctx=16000,
+        n_seq_max=1,
+        extract_reasoning=False,
+        reasoning=False,
+        verbose=False,
+        callbacks=[],
+    )
+
+if Settings.MODEL_SERVER == "OPENAI":
+    # Use OpenAI's Chat model
+    llm = ChatOpenAI(
+        model=Settings.MODEL_NAME,
+        api_key=Settings.OPENAI_API_KEY,
+        temperature=0,
+        streaming=False,
+        stream=False
+    )
+
+if Settings.MODEL_SERVER == "VERTEXAI":
+    # Use Google's Chat model
+    llm = ChatVertexAI(
+        model=Settings.MODEL_NAME,
+        temperature=0,
+        max_tokens=None,
+        max_retries=6,
+        stop=None,
+        disable_streaming=True,
+        streaming=False,
+        stream=False
+    )
+# --------------------------
+# Neo4J LLM Configuration
+# --------------------------
+Neo4jService.set_llm(
+    llm=llm.with_config({"tags": ["nostream"], "metadata": {"run_name": "cypher"}})
+)
+
+# --------------------------
+# TOOLS
+# --------------------------
+tools = [
+    get_list_of_tasks,
+    add_task,
+    check_current_time,
+    get_social_data
+]
+
+memory_tools = [
+    save_short_term_memory,
+    retrieve_long_term_memory,
+    save_long_term_memory,
+]
 
 # --------------------------
 # MEMORY
@@ -59,50 +123,58 @@ class Agent:
         self, llm: BaseChatModel, tools: list, checkpointer: SqliteSaver | None
     ):
         """Initialize the agent with an LLM and tools."""
-        # Store the LLM instance with do-not-render tag
-        self.llm = llm.with_config(
-            config={"tags": ["langsmith:do-not-render"]}
-        )
-        self.tools = tools + memory_tools
+        # Store the LLM instance
+        self.llm = llm
 
         self.checkpointer = checkpointer
 
-        # Bind the LLM with tools and add do-not-render tag
-        self.llm_with_tools = llm.bind_tools(self.tools).with_config(
-            config={"tags": ["langsmith:do-not-render"]}
-        )
+        # Bind the LLM with tools
+        self.llm_with_tools = llm.bind_tools(tools)
 
     # --------------------------
     # BUILD & COMPILE GRAPH
     # --------------------------
     def build_graph(self):
         """Create the agent graph."""
-        # --------------------------
-        # BUILD GRAPH
-        # --------------------------
-
         builder = StateGraph(AgentState)
-        
-        builder.add_node("LLM_assistant", self.LLM_node)
-        builder.add_node("judge", self.judge_node)
-        builder.add_node("judge_final", self.judge_node)
-        builder.add_node("tools", ToolNode(self.tools, handle_tool_errors=False))
 
-        builder.add_edge(START, "judge")
-        builder.add_conditional_edges(
-            "judge", self.judge_condition, path_map={"blocked": "__end__", "safe": "LLM_assistant"}
-        )
-        builder.add_conditional_edges(
-            "LLM_assistant", self.llm_condition, path_map={"tools": "tools", "judge": "judge_final"}
-        )
-        builder.add_conditional_edges(
-            "judge_final", self.judge_condition, path_map={"blocked": "__end__", "safe": "__end__", "tools": "tools"}
-        )
-        builder.add_edge("tools", "LLM_assistant")
+        if ENABLE_JUDGE:
+            builder.add_node("LLM_assistant", self.LLM_node)
+            builder.add_node("judge", self.judge_node)
+            builder.add_node("judge_final", self.judge_node)
+            builder.add_node("tools", ToolNode(tools, handle_tool_errors=False))
 
-        # --------------------------
-        # COMPILE GRAPH
-        # --------------------------
+            builder.add_edge(START, "judge")
+            # First judge: Check if the user request is safe to be processed by the LLM
+            builder.add_conditional_edges(
+                "judge",
+                self.judge_condition,
+                path_map={"blocked": "__end__", "safe": "LLM_assistant"},
+            )
+            # Conditional edge to decide if the LLM needs tools or the response can be sent directly to the final judge
+            builder.add_conditional_edges(
+                "LLM_assistant",
+                self.llm_condition,
+                path_map={"tools": "tools", "judge": "judge_final"},
+            )
+            # Final judge: Check if the LLM response is safe to be sent to the user
+            builder.add_conditional_edges(
+                "judge_final",
+                self.judge_condition,
+                path_map={"blocked": "__end__", "safe": "__end__", "tools": "tools"},
+            )
+            # After a tool call, the LLM needs to be invoked again to process the response.
+            builder.add_edge("tools", "LLM_assistant")
+
+        else:
+            builder.add_node("LLM_assistant", self.LLM_node)
+            builder.add_node("tools", ToolNode(tools, handle_tool_errors=False))
+
+            builder.add_edge(START, "LLM_assistant")
+            builder.add_conditional_edges(
+                "LLM_assistant", tools_condition, path_map=["tools", "__end__"]
+            )
+
         return builder.compile(checkpointer=self.checkpointer, debug=False)
 
     # --------------------------
@@ -113,306 +185,232 @@ class Agent:
         # Check if the last message is a safety warning
         if state["messages"]:
             last_message = state["messages"][-1]
-            if hasattr(last_message, 'content') and "⚠️ Content blocked" in last_message.content:
+            # If the last message is a safety warning, return blocked
+            if (
+                hasattr(last_message, "content")
+                and "⚠️ Content blocked" in last_message.content
+            ):
                 return "blocked"
-        
-        # Check if we just released a pending response that has tool calls
-        if state["messages"]:
-            last_message = state["messages"][-1]
-            # If the last message is an AIMessage with tool calls and it was just approved by judge
-            if hasattr(last_message, 'tool_calls') and last_message.tool_calls:
-                logger.debug("Judge condition: Safe message has tool calls, routing to tools")
+            # If the last message is an AIMessage with tool calls, route to tools
+            elif hasattr(last_message, "tool_calls") and last_message.tool_calls:
                 return "tools"
-        
-        # No tool calls - safe content, end the conversation turn
-        logger.debug("Judge condition: Content is safe with no tool calls, ending turn")
+
+        # No safety warning and no tool calls. Safe content, end the conversation
         return "safe"
-    
+
     def llm_condition(self, state: AgentState):
-        """Determine next step based on LLM response."""
-        # Check if we have a pending response (text response)
+        """Determine next step based on the type of the last message."""
+        # Check if we have a pending response to be analyzed by the final judge
         if "pending_response" in state and state["pending_response"]:
-            logger.debug("LLM condition: Found pending response, routing to judge")
             return "judge"
-        
+
         # Check if the last message has tool calls
-        if state["messages"]:
+        elif "messages" in state and state["messages"]:
             last_message = state["messages"][-1]
-            logger.debug(f"LLM condition: Last message type: {type(last_message)}")
-            logger.debug(f"LLM condition: Last message has type attr: {hasattr(last_message, 'type')}")
-            if hasattr(last_message, 'type'):
-                logger.debug(f"LLM condition: Last message type value: {last_message.type}")
-            logger.debug(f"LLM condition: Last message has tool_calls attr: {hasattr(last_message, 'tool_calls')}")
-            if hasattr(last_message, 'tool_calls') and last_message.tool_calls:
-                logger.debug(f"LLM condition: Found tool calls in last message, routing to tools")
-                logger.debug(f"Tool calls: {[tc.get('name', 'unknown') for tc in last_message.tool_calls]}")
+
+            if hasattr(last_message, "tool_calls") and last_message.tool_calls:
                 return "tools"
-        
+
         # Default to judge for safety evaluation
-        logger.debug("LLM condition: Default routing to judge")
         return "judge"
 
     # --------------------------
     # NODES
     # --------------------------
-    
+
     # LLM Assistant Node
     def LLM_node(self, state: AgentState):
-        """LLM Assistant Node - Handles LLM interactions."""
-        # Apply custom filtering
-        messages_list = self.filtermessages( 20, state["messages"])
-        
-        # Build LLM input
-        SYSTEM_PROMPT = get_system_prompt(state.get("short_term_memories", []), cdu = CDU)
+        """LLM Assistant Node that handles the LLM interactions."""
+        # TODO: wait for long-term memory implementation to filter messages
+        # messages_list = self.filtermessages(None, state["messages"])
+        messages_list = state["messages"]
+
+        # Build LLM input with the system prompt and the last messages
+        short_term_memories = state.get("short_term_memories", [])
         llm_input = [
-            SystemMessage(content=SYSTEM_PROMPT),
+            SystemMessage(content=SYSTEM_PROMPT.format(save_short_term_memory=str("Empty" if not short_term_memories else "\n" + "\n".join(f"- {mem}" for mem in short_term_memories)))),
         ] + messages_list
 
-        with open("./src/logs/llm_input.txt", "w") as f:
-            f.write("Empty" if not llm_input else "\n" + "\n".join(
-                f"{'DORI' if isinstance(m, AIMessage) else 'User' if isinstance(m, HumanMessage) else 'System' if isinstance(m, SystemMessage) else 'Tool'} - {m.content}"
-                for m in llm_input
-            ))
-                
-        ai_message = self.llm_with_tools.batch([llm_input])[0]
+        if ENABLE_JUDGE:
+            # Invoke the LLM with tools in background thread so that the response is not printed until the judge approves it
+            ai_message = self.llm_with_tools.invoke(
+                llm_input,
+                config={"tags": ["nostream"], "metadata": {"run_name": "main"}},
+            )
 
-        # Token count (through LangChain AIMessage)
-        log_token_usage(ai_message, messages_list)
-        
-        # Check if the response has text content (to be checked by judge)
-        has_content = False
-        if hasattr(ai_message, 'content'):
-            content = ai_message.content
-            if content:
-                if isinstance(content, list):
-                    has_content = any(item for item in content if (isinstance(item, dict) and item.get('type') == 'text') or (isinstance(item, str) and item.strip()))
-                elif isinstance(content, str) and content.strip():
-                    has_content = True
-        
-        # Check if the response contains tool calls
-        has_tool_calls = hasattr(ai_message, 'tool_calls') and ai_message.tool_calls
-        
-        # If message has text content, it MUST be checked by judge_final first (even if it has tool calls)
-        if has_content:
-            ai_message.id = f"do-not-render-{ai_message.id}"
-            logger.debug("LLM response has text content, storing in buffer for safety verification")
-            return {"pending_response": ai_message}
-        elif has_tool_calls:
-            # Only tool calls, no text content - safe to execute tools directly
-            logger.debug("LLM response has only tool calls (no text), routing directly to tools")
-            return {"messages": [ai_message]}
-        else:
-            # No content and no tool calls - empty response, store in pending for safety check anyway
-            ai_message.id = f"do-not-render-{ai_message.id}"
-            logger.debug("LLM response is empty, storing in buffer for safety verification")
-            return {"pending_response": ai_message}
-    
-    def _evaluate_content_safety(self, message) -> bool:
-        """Evaluate if a message's content is safe using the judge LLM."""
-        logger.debug(f"Evaluating safety of message type: {type(message)}")
-        logger.debug(f"Message content: {getattr(message, 'content', 'No content')[:300]}...")
-        
-        # Extract content text
-        if hasattr(message, 'content'):
-            if isinstance(message.content, list):
-                content_text = ""
-                for item in message.content:
-                    if isinstance(item, dict) and 'text' in item:
-                        content_text += item['text']
-                    else:
-                        content_text += str(item)
+            # Check if the response has text content (to be checked by judge)
+            has_content = False
+            if hasattr(ai_message, "content"):
+                content = ai_message.content
+                # Depending on the model and response format, the content may be a list of dicts or a string
+                if content:
+                    if isinstance(content, list):
+                        # Look for at least one non-empty text chunk within the structured response
+                        has_content = any(
+                            item
+                            for item in content
+                            if (isinstance(item, dict) and item.get("type") == "text")
+                            or (isinstance(item, str) and item.strip())
+                        )
+                    elif isinstance(content, str) and content.strip():
+                        # Simple string response that contains text must be judged
+                        has_content = True
+
+            # Check if the response contains tool calls
+            has_tool_calls = hasattr(ai_message, "tool_calls") and ai_message.tool_calls
+
+            if has_content:
+                # If message has text content, it MUST be checked by judge_final first
+                return {"pending_response": ai_message}
+            elif has_tool_calls:
+                # Only tool calls, no text content. This is safe to execute.
+                return {"messages": [ai_message]}
             else:
-                content_text = str(message.content)
+                # No content and no tool calls. Store in pending_response for safety check anyway
+                return {"pending_response": ai_message}
+
         else:
-            content_text = str(message)
-        
-        # If content is empty or only whitespace, consider it safe (e.g., tool-only messages)
-        if not content_text or not content_text.strip():
-            logger.debug("Empty content detected, defaulting to SAFE")
-            return True
-        
-        # Create evaluation message
-        evaluation_message = HumanMessage(content=content_text)
-        judge_prompt = get_judge_prompt(cdu="main")
-        prompt = [
-            SystemMessage(content=judge_prompt),
-            evaluation_message
-        ]
-        
-        response = self.llm.invoke(prompt)
-        logger.debug(f"Judge response: {response}")
-        
-        # Extract content from response if it's a message object
-        if hasattr(response, 'content'):
-            response_content = response.content
-        else:
-            response_content = str(response)
+            ai_message = self.llm_with_tools.invoke(
+                llm_input, config={"metadata": {"run_name": "main"}}
+            )
+            return {"messages": [ai_message]}
+
+    def _evaluate_content_safety(self, message) -> bool:
+        """Evaluate if a message's content is safe using the judge LLM.
+
+        Args:
+            message: Message object or string to evaluate
+
+        Returns:
+            bool: True if content is safe, False otherwise
+        """
+        try:
+            # Extract content text. Depending on the model and response format,
+            # the content may be a list of dicts or a string.
+            # If it's a list of dicts, extract the text content from the response
+            if hasattr(message, "content"):
+                if isinstance(message.content, list):
+                    evaluation_text = ""
+                    for item in message.content:
+                        if isinstance(item, dict) and "text" in item:
+                            evaluation_text += item["text"]
+                        else:
+                            evaluation_text += str(item)
+                else:
+                    evaluation_text = str(message.content)
+            else:
+                evaluation_text = str(message)
+
+            # If content is empty or only whitespace, consider it safe
+            if not evaluation_text or not evaluation_text.strip():
+                return True
+
+            # Create evaluation message. The message is the judge prompt with the content of the message to be evaluated.
+            # The message type is either "user" or "assistant".
+
+            prompt = [
+                SystemMessage(content=JUDGE_PROMPT.format(content=str(evaluation_text)))
+            ]
+
+            # Invoke the judge in the background thread to evaluate the content safety wihtout printing the response.
+            response = self.llm.invoke(
+                prompt, config={"tags": ["nostream"], "metadata": {"run_name": "judge"}}
+            )
+
+            # Extract content from response if it's a message object
+            if hasattr(response, "content"):
+                evaluation_response = response.content
+            else:
+                evaluation_response = str(response)
             
-        logger.debug(f"Raw response content: '{response_content}'")
-        
-        # Handle empty or invalid responses
-        if not response_content or not response_content.strip():
-            logger.debug("Empty response from judge, defaulting to SAFE")
+            logger.info(f"LLM JUDGE: {evaluation_response}. Message: {evaluation_text}")
+
+            # If the response is empty, default to SAFE
+            if not evaluation_response or not evaluation_response.strip():
+                return True
+
+            # Use regex to find SAFE or UNSAFE in the response (case-insensitive)
+            # This handles cases where the LLM adds extra text or formatting
+            safe_match = re.search(r"\bSAFE\b", evaluation_response, re.IGNORECASE)
+            unsafe_match = re.search(r"\bUNSAFE\b", evaluation_response, re.IGNORECASE)
+
+            # If UNSAFE is found, return False
+            if unsafe_match:
+                return False
+            # If SAFE is found, return True
+            elif safe_match:
+                return True
+            # If neither is found clearly, default to SAFE (allow content through)
+            else:
+                logger.warning(f"[WARNING] Could not parse safety evaluation. Defaulting to SAFE. Response: {evaluation_response}")
+                return True
+
+        except Exception as e:
+            # Log error and fail safe (allow content through)
+            logger.error(f"[ERROR] Content safety evaluation failed: {e}")
             return True
-        else:
-            is_safe = response_content.strip().upper() == "SAFE"
-            logger.debug(f"Is safe: {is_safe}")
-            return is_safe
 
     # Judge Node
     def judge_node(self, state: AgentState):
         """Judge Node - Evaluates message content for safety."""
-       
         blocked_message = "⚠️ Content blocked due to safety concerns."
 
-        # Check if we have a pending response to evaluate
+        # CASE 1: Check if we have a pending response to evaluate.
+        # A message in pending_response is a response from the LLM that needs to be evaluated by the judge.
         if "pending_response" in state and state["pending_response"]:
-            logger.debug("Judge node called with pending response for safety verification")
             pending_message = state["pending_response"]
-            
+
             # Tool messages should be passed through without safety evaluation
             if isinstance(pending_message, ToolMessage):
-                logger.debug("Tool message detected, passing through without safety evaluation")
-                # Remove the do-not-render prefix to allow frontend rendering
-                pending_message.id = pending_message.id.replace("do-not-render-", "")
                 return {"messages": [pending_message], "pending_response": None}
-            
+
             is_safe = self._evaluate_content_safety(pending_message)
 
             if is_safe:
-                logger.debug("Content is safe, releasing pending response to messages")
-                # Remove the do-not-render prefix to allow frontend rendering
-                pending_message.id = pending_message.id.replace("do-not-render-", "")
                 # Release the pending response to messages
                 return {"messages": [pending_message], "pending_response": None}
             else:
                 # If not safe, replace with a safety warning
                 output = blocked_message
-                logger.debug("Content is unsafe, replacing with safety warning")
                 blocked_message = AIMessage(content=output)
                 return {"messages": [blocked_message], "pending_response": None}
-        
-        # Check if the last message is a tool message (from tool execution)
+
+        # CASE 2: Check any message in the state for judge verification.
+        # Messages in "messages" can be either the user input
+        # or a response from the LLM containing a ToolMessage.
         if state["messages"]:
             last_message = state["messages"][-1]
+
+            # If the last message is a tool message, skip evaluation
             if isinstance(last_message, ToolMessage):
-                logger.debug("Tool message detected, passing through without safety evaluation")
                 return {}
-        
-        # Fallback to original logic for other cases (like initial user input check)
-        last_messages = self.filtermessages(1, state["messages"])
-        if not last_messages:
-            logger.debug("No messages to judge")
-            return {}
-        
-        logger.debug(f"Judge node called with {len(state['messages'])} messages in state")
-        
-        # Get the last message to evaluate
-        last_message = last_messages[-1]
-        
-        if isinstance(last_message, ToolMessage):
-            logger.debug("Skipping tool message")
-            return {}  
 
-        is_safe = self._evaluate_content_safety(last_message)
-
-        if is_safe:
-            logger.debug("Content is safe, returning empty state")
-            return {}
-        else:
-            # If not safe, replace the last message with a safety warning
-            output = blocked_message
-            logger.debug("Content is unsafe, replacing with safety warning")
-            logger.debug(f"Original message count: {len(state['messages'])}")
-            # Replace the last message instead of adding a new one
-            new_messages = state["messages"][:-1] + [AIMessage(content=output)]
-            logger.debug(f"New message count: {len(new_messages)}")
-            logger.debug(f"Replaced message with: {output}")
-            return {"messages": new_messages}
+            # Evaluate the content safety of the last message
+            is_safe = self._evaluate_content_safety(last_message)
+            if is_safe:
+                # Content is safe, return empty state
+                return {}
+            else:
+                # If not safe, replace the last message with a safety warning
+                output = blocked_message
+                new_messages = state["messages"][:-1] + [AIMessage(content=output)]
+                return {"messages": new_messages}
 
     # --------------------------
     # AGENT UTILS
     # --------------------------
-    
-    # Messages filter
-    def filtermessages(self, last :int, allmessages: list):
-        """Filter messages to keep only relevant ones."""
-
-        # TODO: Pending to implement
-        def is_relevant_message(msg: AnyMessage, index: int, totalmessages: int):
-            # Always keep last `last` messages
-            if index >= totalmessages - last:
-                return True
-
-            # Keep all other messages
-            return False
-
-        # Apply custom filtering
-        filteredmessages = [
-            msg
-            for idx, msg in enumerate(allmessages)
-            if is_relevant_message(msg, idx, len(allmessages))
-        ]
-
-        return filteredmessages
+    def filtermessages(self, last: int = None, allmessages: list = []):
+        """Return only the last messages (or all if last is None)."""
+        if last is None:
+            return allmessages  # Return all messages
+        if last < 0:
+            raise ValueError(f"'last' must be non-negative, got {last}")
+        if last == 0:
+            return []
+        return allmessages[-last:] if len(allmessages) > last else allmessages
     
 
 # --------------------------
 # AGENT INSTANCE
 # --------------------------
 graph = Agent(llm, tools, checkpointer).build_graph()
-if Settings.MODEL_SERVER == "OLLAMA":
-
-    llm = ChatOllama(
-        model=Settings.MODEL_NAME,
-        temperature=0,
-        num_ctx=16000,
-        n_seq_max=1,
-        extract_reasoning=False,
-        streaming=False,
-        stream=False,
-    )
-
-if Settings.MODEL_SERVER == "OPENAI":
-    # Use OpenAI's Chat model
-    llm = ChatOpenAI(
-        model=Settings.MODEL_NAME,
-        api_key=Settings.OPENAI_API_KEY,
-        temperature=0,
-        streaming=False,
-        stream=False
-    )
-
-if Settings.MODEL_SERVER == "VERTEXAI":
-    # Use Google's Chat model
-    llm = ChatVertexAI(
-        model=Settings.MODEL_NAME,
-        temperature=0,
-        max_tokens=None,
-        max_retries=6,
-        stop=None,
-        disable_streaming=True,
-        streaming=False,
-        stream=False
-    )
-
-
-# --------------------------
-# TOOLS
-# --------------------------
-tools = [
-    get_list_of_tasks,
-    add_task,
-    check_current_time
-]
-
-memory_tools = [
-    save_short_term_memory,
-    retrieve_long_term_memory,
-    save_long_term_memory,
-]
-
-
-# --------------------------
-# AGENT
-graph = Agent(llm, tools, memory_tools, checkpointer).build_graph()

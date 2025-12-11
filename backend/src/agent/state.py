@@ -10,7 +10,7 @@ def add(left, right):
     if left != right:
         return left + right
     else:
-        return left + ["None"]
+        return left + [None]
     
 def add_dict(left, right):
     """Can also import `add` from the `operator` built-in."""
@@ -41,8 +41,8 @@ class TokenUsage(TypedDict):
 class AgentState(TypedDict, total=False):
     messages: Annotated[List[AnyMessage], add_messages]
     ui: Annotated[Sequence[AnyUIMessage], ui_message_reducer]
-    tasks: Annotated[list[str], add_str]
-    tools_used : Annotated[list[str], add_str]
+    tasks: Annotated[list[str], add]
+    tools_used : Annotated[list[str], add]
+    pending_response: AnyMessage  # Buffer for LLM response before safety verification
     short_term_memories: Annotated[list[dict], add_memories]
     long_term_memories: Annotated[list[dict], add_memories]
-    pending_response: AnyMessage  # Buffer for LLM response before safety verification

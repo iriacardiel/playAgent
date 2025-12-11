@@ -11,3 +11,22 @@ env/
 **/.env
 backend/src/services/stt/stt.py
 backend/.env
+
+# Virtual environments
+venv/
+env/
+.env/
+.venv/
+
+#  Database files
+*.sqlite3
+*.db
+
+# Python bytecode cache
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.ruff_cache/
+
+stt/models--mobiuslabsgmbh--faster-whisper-large-v3-turbo
