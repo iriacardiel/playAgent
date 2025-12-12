@@ -5,79 +5,100 @@ services:
       image: neo4j:5.23-community
       container_name: neo4j
       ports:
-        - "${NEO4J_HTTP_PORT}:${NEO4J_HTTP_PORT}"   # Browser (e.g. 7474:7474)
-        - "${NEO4J_URI_PORT}:${NEO4J_URI_PORT}"     # Bolt (e.g. 7687:7687)
+        - "${NEO4J_HTTP_PORT}:${NEO4J_HTTP_PORT}"
+        - "${NEO4J_URI_PORT}:${NEO4J_URI_PORT}"
       environment:
         - NEO4J_AUTH=${NEO4J_USER}/${NEO4J_PASSWORD}
         - NEO4J_PLUGINS=["apoc"]
+        - NEO4J_dbms_usage__report_enabled=false
       volumes:
         - neo4j_data:/data
+      healthcheck:
+        test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://${NEO4J_IP}:${NEO4J_HTTP_PORT} || exit 1"]
+        interval: 10s
+        timeout: 5s
+        retries: 5
+        start_period: 30s
 
-  neodash:
-    image: neo4jlabs/neodash:latest
-    container_name: neodash
+  # neodash:
+  #   image: neo4jlabs/neodash:latest
+  #   container_name: neodash
+  #   restart: unless-stopped
+  #   ports:
+  #     - "${NEODASH_HTTP_PORT}:${NEODASH_HTTP_PORT}"   # Browser (e.g. 5005:5005)
+  #   environment:
+  #     NODE_ENV: production
+  #   depends_on:
+  #     - neo4j
+  stt:
+    build:
+      context: ./stt
+      dockerfile: Dockerfile
+    image: agent-stt-i:${IMAGE_VERSION}
+    container_name: agent-stt-c
     restart: unless-stopped
-    ports:
-      - "${NEODASH_HTTP_PORT}:${NEODASH_HTTP_PORT}"   # Browser (e.g. 5005:5005)
+    ports: [ "${STT_PORT}:${STT_PORT}" ]
     environment:
-      NODE_ENV: production
-    depends_on:
-      - neo4j
+      STT_HOST: "${STT_HOST}"
+      STT_PORT: "${STT_PORT}"
+    gpus: all
 
   ollama:
-    # Build from your custom Dockerfile (which COPYs ./.ollama into /root/.ollama)
     build:
-      context: ./ollama-custom        # <- folder that has Dockerfile and .ollama/
+      context: ./ollama-custom
       dockerfile: Dockerfile
-    image: agent-ollama-i:${LATEST:-latest}  # tag the result so it's easy to reference/save
+    image: agent-ollama-i:${LATEST:-latest}  
     container_name: agent-ollama-c
     restart: unless-stopped
-    ports: ["${OLLAMA_PORT:-11434}:${OLLAMA_PORT:-11434}"]
+    ports: ["${OLLAMA_PORT}:${OLLAMA_PORT}"]
     environment:
       OLLAMA_KEEP_ALIVE: "24h"
-    gpus: all # UNCOMMENT if you have nvidia-docker set up
-    #volumes: # No volumes: image is fully self-contained
-
+    gpus: all
 
   backend:
       build:
         context: ./backend
         dockerfile: Dockerfile
-      image: agent-backend-i:${LATEST:-latest}  # tag the result so it's easy to reference/save
+      image: agent-backend-i:${LATEST:-latest} 
       container_name: agent-backend-c
       restart: unless-stopped
-      ports: ["${BACKEND_PORT:-2024}:${BACKEND_PORT:-2024}"]
+      ports: ["${BACKEND_PORT}:${BACKEND_PORT}"]
       environment:
-        OLLAMA_HOST: http://ollama:${OLLAMA_PORT:-11434}
-        NEO4J_URI: bolt://neo4j:${NEO4J_URI_PORT:-7687}
-        PORT: "${BACKEND_PORT:-2024}"
-      gpus: all # UNCOMMENT if you have nvidia-docker set up
-      #volumes: # No volumes: image is fully self-contained
+        MODEL_SERVER: "${MODEL_SERVER}"
+        MODEL_NAME: "${MODEL_NAME}"
+        PORT: "${BACKEND_PORT}"
+        OLLAMA_HOST: http://${OLLAMA_IP}:${OLLAMA_PORT}
+        NEO4J_USER: "${NEO4J_USER}"
+        NEO4J_PASSWORD: "${NEO4J_PASSWORD}"
+        NEO4J_DATABASE: "${NEO4J_DATABASE}"
+        NEO4J_URI_PORT: "${NEO4J_URI_PORT}"
+        NEO4J_URI: "bolt://${NEO4J_IP}:${NEO4J_URI_PORT}"
+        LOG_METRICS: "${LOG_METRICS}"
+        ENABLE_JUDGE: "${ENABLE_JUDGE}"
+        OPENAI_API_KEY: "${OPENAI_API_KEY}"
+        GOOGLE_APPLICATION_CREDENTIALS: "${GOOGLE_APPLICATION_CREDENTIALS}"
+        EMB_MODEL: "${EMB_MODEL}"
+        EMB_DIMENSION: "${EMB_DIMENSION}"
+        EMB_PROPERTY: "${EMB_PROPERTY}"
+        EMB_SIMILARITY: "${EMB_SIMILARITY}" 
+      gpus: all
       depends_on:
-        - neo4j
-        - ollama
+        neo4j:
+          condition: service_healthy
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        NEXT_PUBLIC_API_URL: http://localhost:${BACKEND_PORT:-2024}
-        LANGGRAPH_API_URL: http://localhost:${BACKEND_PORT:-2024} 
+        LANGGRAPH_API_URL: http://localhost:${BACKEND_PORT} 
     image: agent-frontend-i:${LATEST:-latest}
     container_name: agent-frontend-c
     restart: unless-stopped
-    ports: ["${FRONTEND_PORT:-3000}:${FRONTEND_PORT:-3000}"]
+    ports: ["${FRONTEND_PORT}:${FRONTEND_PORT}"]
     environment:
       NODE_ENV: production
-      NEXT_TELEMETRY_DISABLED: "1"
-      PORT: "${FRONTEND_PORT:-3000}"
-      NEXT_PUBLIC_API_URL: http://localhost:${BACKEND_PORT:-2024}
-      LANGGRAPH_API_URL: http://localhost:${BACKEND_PORT:-2024}
-    depends_on:
-      - backend
-    #volumes: # No volumes: image is fully self-contained
-
+      PORT: "${FRONTEND_PORT}"
 
 volumes:
   neo4j_data:

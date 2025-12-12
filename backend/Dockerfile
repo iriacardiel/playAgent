@@ -38,10 +38,7 @@ COPY --from=builder /opt/venv /opt/venv
 
 # Copy source code directly to runtime (only once)
 COPY langgraph.json ./
-COPY .env .env
 COPY src/ ./src/
-
-COPY .huggingface/ /opt/.huggingface/
 
 # Set PYTHONPATH so Python can find your modules without installing as package
 ENV PYTHONPATH="/app/src"

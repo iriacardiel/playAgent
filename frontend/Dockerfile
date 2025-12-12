@@ -11,8 +11,10 @@ RUN pnpm install --frozen-lockfile
 FROM deps AS builder
 WORKDIR /app
 COPY . .
-ARG LANGGRAPH_API_URL=http://backend:2024
+ARG LANGGRAPH_API_URL=http://localhost:2024
+ARG NEXT_PUBLIC_API_URL=http://localhost:2024
 ENV LANGGRAPH_API_URL=${LANGGRAPH_API_URL}
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 RUN pnpm build
 
 FROM node:22-alpine AS runner

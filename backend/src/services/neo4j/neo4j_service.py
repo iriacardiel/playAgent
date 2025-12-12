@@ -20,10 +20,6 @@ from config import Settings
 # Config
 # -----------------------------------------------------------------------------
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-)
 logger = logging.getLogger(__name__)
 
 NEO4J_URI = Settings.NEO4J_URI
@@ -54,7 +50,7 @@ class Neo4jService:
             return
 
         try:
-            cprint(f"Initializing graph at {NEO4J_URI}", "green")
+            logger.info(f"NEO4J: Initializing graph at {NEO4J_URI}")
             cls._graph = Neo4jGraph(
                 url=NEO4J_URI,
                 username=NEO4J_USER,
@@ -71,20 +67,20 @@ class Neo4jService:
     @classmethod
     def get_cypher_chain(cls) -> GraphCypherQAChain:
         """Get the Cypher QA chain for querying the Neo4j graph."""
-        if not cls._cypherChain:
-            if not cls._llm:
-                raise ValueError("LLM not set for Cypher QA chain")
-
-            cls._cypherChain = GraphCypherQAChain.from_llm(
-                cls._llm,
-                graph=cls.get_graph(),
-                verbose=True,
-                cypher_prompt=CYPHER_GENERATION_PROMPT,
-                allow_dangerous_requests=True,
-                return_direct=True,
-                top_k=100,
-                return_intermediate_steps=True,
-            )
+        if not cls._llm:
+            raise ValueError("LLM not set for Cypher QA chain")
+        cls.get_graph().refresh_schema()
+        cls._cypherChain = GraphCypherQAChain.from_llm(
+            cls._llm,
+            graph=cls.get_graph(),
+            verbose=True,
+            cypher_prompt=CYPHER_GENERATION_PROMPT,
+            allow_dangerous_requests=True,
+            return_direct=True,
+            top_k=100,
+            return_intermediate_steps=False,
+        )
+        print("schema:", cls._cypherChain.graph_schema)
 
         return cls._cypherChain
 

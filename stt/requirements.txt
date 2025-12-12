@@ -1,0 +1,6 @@
+fastapi
+uvicorn[standard]
+faster-whisper
+python-multipart
+requests
+prometheus-client

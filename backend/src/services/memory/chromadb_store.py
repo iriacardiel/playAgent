@@ -21,6 +21,7 @@ def get_embedding_ollama(text: str, model="nomic-embed-text") -> list[float] | N
     This allows ChromaDB to fall back to its default embedding function.
     """
     ollama_host = os.environ.get("OLLAMA_HOST", "http://localhost:11434") # IN DOCKER IT IS "http://ollama:11434"
+    print(ollama_host)
     url = f"{ollama_host}/api/embed"
     try:
         payload = {
