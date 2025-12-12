@@ -17,16 +17,18 @@ dependencies = [
     "langgraph-cli[inmem]>=0.1.71",
     "langgraph-api",
     "fastapi",
-    "google-genai",
     "nats-py>=2.10.0",
     "termcolor>=3.1.0",
     "langchain-ollama>=0.3.3",
     "langgraph-checkpoint>=2.1.0",
     "langgraph-checkpoint-sqlite>=2.0.10",
-    "transformers>=4.46.0",
     "torch>=2.1.0",
     "python-multipart>=0.0.6",
     "pandas>=2.3.0",
+    "neo4j>=5.28.2",
+    "langchain-neo4j>=0.4.0",
+    "websockets>=15.0.1",
+
     "faiss-cpu",
     "chromadb",
     "ollama",
@@ -34,12 +36,14 @@ dependencies = [
     "folium",
     "gradio",
     "langchain-google-vertexai",
-    "langchain-neo4j",
-    "neo4j"
+    
 
     "langchain-openai",
     "langchain-google-vertexai>=2.1.2",
     "google-cloud-aiplatform>=1.114.0",
+    "google-genai",
+    "langchain-classic>=1.0.0",
+
 ]
 
 

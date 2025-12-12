@@ -14,11 +14,11 @@ services:
       volumes:
         - neo4j_data:/data
       healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://${NEO4J_IP}:${NEO4J_HTTP_PORT} || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
+        test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://${NEO4J_IP}:${NEO4J_HTTP_PORT} || exit 1"]
+        interval: 10s
+        timeout: 5s
+        retries: 5
+        start_period: 30s
 
   # neodash:
   #   image: neo4jlabs/neodash:latest
@@ -35,7 +35,7 @@ services:
       context: ./stt
       dockerfile: Dockerfile
     image: agent-stt-i:${IMAGE_VERSION}
-    container_name: tars-stt-c
+    container_name: agent-stt-c
     restart: unless-stopped
     ports: [ "${STT_PORT}:${STT_PORT}" ]
     environment:
@@ -66,8 +66,6 @@ services:
       environment:
         MODEL_SERVER: "${MODEL_SERVER}"
         MODEL_NAME: "${MODEL_NAME}"
-        NIMBUS_API_IP: "${NIMBUS_API_IP}"
-        REAL_API_DATA: "${REAL_API_DATA}"
         PORT: "${BACKEND_PORT}"
         OLLAMA_HOST: http://${OLLAMA_IP}:${OLLAMA_PORT}
         NEO4J_USER: "${NEO4J_USER}"

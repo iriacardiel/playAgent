@@ -9,6 +9,7 @@ class Settings:
 
     MODEL_SERVER = os.environ.get("MODEL_SERVER", "OLLAMA")
     MODEL_NAME = os.environ.get("MODEL_NAME", "gpt-oss:20b")
+    OLLAMA_HOST = os.environ.get("OLLAMA_HOST")
 
     NEO4J_USER = os.environ.get("NEO4J_USER") or "neo4j"
     NEO4J_PASSWORD = os.environ.get("NEO4J_PASSWORD") or "test1234"
@@ -16,7 +17,6 @@ class Settings:
     
     LOG_METRICS = os.environ.get("LOG_METRICS", 1)
     ENABLE_JUDGE = os.environ.get("ENABLE_JUDGE", 1)
-    
     OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
     GOOGLE_APPLICATION_CREDENTIALS = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
     EMB_MODEL=os.environ.get("EMB_MODEL")

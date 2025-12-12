@@ -99,6 +99,8 @@ memory_tools = [
     save_long_term_memory,
 ]
 
+tools = tools + memory_tools
+
 # --------------------------
 # MEMORY
 # --------------------------
@@ -228,7 +230,7 @@ class Agent:
         # Build LLM input with the system prompt and the last messages
         short_term_memories = state.get("short_term_memories", [])
         llm_input = [
-            SystemMessage(content=SYSTEM_PROMPT.format(save_short_term_memory=str("Empty" if not short_term_memories else "\n" + "\n".join(f"- {mem}" for mem in short_term_memories)))),
+            SystemMessage(content=SYSTEM_PROMPT.format(short_term_memories_str=str("Empty" if not short_term_memories else "\n" + "\n".join(f"- {mem}" for mem in short_term_memories)))),
         ] + messages_list
 
         if ENABLE_JUDGE:
