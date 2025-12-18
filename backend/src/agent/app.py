@@ -5,8 +5,6 @@ import sys
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from api.map import router as map_router
-        
 
 signal.signal(signal.SIGINT, sys.exit)  # Ctrl+C
 signal.signal(signal.SIGTERM, sys.exit)  # Termination signal
@@ -27,7 +25,4 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Include routers
-app.include_router(map_router, prefix="/api")
 

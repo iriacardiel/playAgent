@@ -87,7 +87,7 @@ make dev-backend # to run backend only
 make dev-frontend # to run frontend only
 ```
 
-Run the following scripts to load data into Neo4j Knowledge Graph and make the nodes move in the map:
+Run the following scripts to load data into Neo4j Knowledge Graph:
 
 ```bash
 python backend/src/services/neo4j/load_friends.py
