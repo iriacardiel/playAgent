@@ -1,4 +1,5 @@
 
+import logging
 from typing import Annotated
 
 from langchain_core.messages import ToolMessage
@@ -7,6 +8,7 @@ from langgraph.types import Command
 
 from services.memory.chromadb_store import ChromaVectorMemoryStore
 
+logger = logging.getLogger(__name__)
 
 @tool
 def retrieve_long_term_memory(
@@ -29,6 +31,7 @@ def retrieve_long_term_memory(
 
     """
     try:
+        logger.info("Tool: retrieve_long_term_memory.")
         # Perform actual vector store retrieval
         vector_store = ChromaVectorMemoryStore(collection_name="DORI_memories", reset_on_init=False)
         

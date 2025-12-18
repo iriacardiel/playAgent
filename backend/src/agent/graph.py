@@ -1,6 +1,7 @@
 import logging
 import re
 import sqlite3
+import json
 
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import (
@@ -37,7 +38,6 @@ logger.setLevel(logging.DEBUG)
 # --------------------------
 # LLM
 # --------------------------
-LOG_METRICS = bool(int(Settings.LOG_METRICS))
 ENABLE_JUDGE = bool(int(Settings.ENABLE_JUDGE))
 
 
@@ -228,11 +228,11 @@ class Agent:
         messages_list = state["messages"]
 
         # Build LLM input with the system prompt and the last messages
-        short_term_memories = state.get("short_term_memories", [])
+        short_term_memories = state.get("short_term_memories", []) # short_term_memories is a list of dicts
         llm_input = [
-            SystemMessage(content=SYSTEM_PROMPT.format(short_term_memories_str=str("Empty" if not short_term_memories else "\n" + "\n".join(f"- {mem}" for mem in short_term_memories)))),
+            SystemMessage(content=SYSTEM_PROMPT.format(short_term_memories_str=str("Empty" if not short_term_memories else "\n" + "\n".join(f"- {json.dumps(mem)}" for mem in short_term_memories)))),
         ] + messages_list
-
+        print(llm_input)
         if ENABLE_JUDGE:
             # Invoke the LLM with tools in background thread so that the response is not printed until the judge approves it
             ai_message = self.llm_with_tools.invoke(

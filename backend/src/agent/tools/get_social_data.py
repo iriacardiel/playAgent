@@ -1,3 +1,4 @@
+import logging
 import json
 from typing import Annotated
 from langchain_core.messages import ToolMessage
@@ -6,6 +7,7 @@ from langgraph.types import Command
 from termcolor import colored
 from services.neo4j import Neo4jService
 
+logger = logging.getLogger(__name__)
 
 @tool
 def get_social_data(
@@ -31,6 +33,10 @@ def get_social_data(
     # Return the COMPLETE result as a tool message
     tool_message = ToolMessage(response, tool_call_id=tool_call_id)
 
-    update = {"messages": [tool_message], "tools_used": ["get_battlefield_data"]}
-
+    update = {
+        "messages": [tool_message], 
+        "tools_used": ["get_social_data"]
+    }
+    
+    logger.info("Tool: get_social_data")
     return Command(update=update, goto="LLM_assistant")

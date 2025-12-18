@@ -1,3 +1,5 @@
+import logging
+
 from typing import Annotated
 
 from langchain_core.messages import ToolMessage
@@ -5,7 +7,7 @@ from langchain_core.tools import InjectedToolCallId, tool
 from langgraph.types import Command
 
 
-
+logger = logging.getLogger(__name__)
 
 @tool
 def add_task(new_task:str,
@@ -30,4 +32,5 @@ def add_task(new_task:str,
         "tools_used": ["add_task"],
     }
 
+    logger.info(f"Tool: add_task. {content}")
     return Command(update=update)

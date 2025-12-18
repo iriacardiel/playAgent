@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 from typing import Annotated, List
 
@@ -7,6 +8,7 @@ from langgraph.prebuilt import InjectedState
 from langgraph.types import Command
 from termcolor import cprint
 
+logger = logging.getLogger(__name__)
 
 
 @tool
@@ -84,7 +86,7 @@ def save_short_term_memory(
     content = f"Short term memory saved: {new_short_term_memory}"
     
     tool_message = ToolMessage(content, tool_call_id=tool_call_id)
-    
+    logger.info("Tool: save_short_term_memory.")
     # Return Command to update state
     return Command(update={
         "messages": [tool_message],

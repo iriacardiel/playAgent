@@ -1,4 +1,5 @@
 
+import logging
 from typing import Annotated, List
 
 from langchain_core.messages import ToolMessage
@@ -6,6 +7,7 @@ from langchain_core.tools import InjectedToolCallId, tool
 from langgraph.prebuilt import InjectedState
 from langgraph.types import Command
 
+logger = logging.getLogger(__name__)
 
 @tool
 def get_list_of_tasks(
@@ -31,5 +33,6 @@ def get_list_of_tasks(
         "messages": [tool_message],
         "tools_used": ["get_list_of_tasks"],
     }
+    logger.info("Tool: get_list_of_tasks.")
 
     return Command(update=update)
