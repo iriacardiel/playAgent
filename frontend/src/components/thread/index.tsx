@@ -85,8 +85,12 @@ function ScrollToBottom(props: { className?: string }) {
 function SuggestedMessages({ onSelect, isLoading }: { onSelect: (message: string) => void; isLoading: boolean }) {
   const suggestions = [
     "What can you help me with?",
-    "How many people are there?",
-    "Give me a list of tasks.",
+    "Explain the diagnosis.",
+    "Explain the treatment.",
+    "I have a new symptom.",
+    "List saved symptoms.",
+    "I have a new task",
+    "List tasks."
   ];
 
   return (

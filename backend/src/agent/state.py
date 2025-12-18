@@ -42,6 +42,7 @@ class AgentState(TypedDict, total=False):
     messages: Annotated[List[AnyMessage], add_messages]
     ui: Annotated[Sequence[AnyUIMessage], ui_message_reducer]
     tasks: Annotated[list[str], add]
+    symptoms: Annotated[list[str], add]
     tools_used : Annotated[list[str], add]
     pending_response: AnyMessage  # Buffer for LLM response before safety verification
     short_term_memories: Annotated[list[dict], add_memories]

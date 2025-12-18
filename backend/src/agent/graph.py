@@ -22,7 +22,11 @@ from agent.tools import (
     get_list_of_tasks,
     add_task,
     check_current_time,
+    add_symptom,
+    get_list_of_symptoms,
     get_social_data,
+    get_diagnosis,
+    get_treatment,
     save_short_term_memory,
     retrieve_long_term_memory,
     save_long_term_memory,
@@ -90,7 +94,10 @@ tools = [
     get_list_of_tasks,
     add_task,
     check_current_time,
-    get_social_data
+    add_symptom,
+    get_list_of_symptoms,
+    get_diagnosis,
+    get_treatment,
 ]
 
 memory_tools = [
