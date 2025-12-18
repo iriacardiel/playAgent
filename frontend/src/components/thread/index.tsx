@@ -83,7 +83,32 @@ function ScrollToBottom(props: { className?: string }) {
   );
 }
 
+// Suggested messages component
+function SuggestedMessages({ onSelect, isLoading }: { onSelect: (message: string) => void; isLoading: boolean }) {
+  const suggestions = [
+    "What can you help me with?",
+    "How many people are there?",
+    "Give me a list of tasks.",
+  ];
 
+  return (
+    <div className="flex flex-wrap gap-2 mb-3">
+      {suggestions.map((suggestion, index) => (
+        <button
+          key={index}
+          onClick={() => onSelect(suggestion)}
+          disabled={isLoading}
+          className={cn(
+            "px-4 py-2 text-sm rounded-lg border border-border bg-background hover:bg-muted transition-colors",
+            "disabled:opacity-50 disabled:cursor-not-allowed"
+          )}
+        >
+          {suggestion}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 export function Thread() {
   const [artifactContext, setArtifactContext] = useArtifactContext();
@@ -211,6 +236,16 @@ export function Thread() {
 
     setInput("");
     setContentBlocks([]);
+  };
+
+
+  const handleSuggestionSelect = (suggestion: string) => {
+    setInput(suggestion);
+    // Optionally, auto-submit the suggestion
+    setTimeout(() => {
+      const formElement = document.querySelector('form');
+      formElement?.requestSubmit();
+    }, 0);
   };
 
   const handleRegenerate = (
@@ -444,7 +479,14 @@ export function Thread() {
                   )}
 
                   <ScrollToBottom className="animate-in fade-in-0 zoom-in-95 absolute bottom-full left-1/2 mb-4 -translate-x-1/2" />
-
+                  <div className="mx-auto w-[60vw] max-w-none">
+                    {/* Suggested messages - only show when chat hasn't started */}
+                    {
+                      <SuggestedMessages 
+                        onSelect={handleSuggestionSelect}
+                        isLoading={isLoading}
+                      />
+                    }
                   <div
                     ref={dropRef}
                     className={cn(
@@ -457,7 +499,7 @@ export function Thread() {
                     <AudioRecorderProvider onTranscriptionReceived={handleTranscriptionReceived}>
                       <form
                         onSubmit={handleSubmit}
-                        className="mx-auto grid w-[60vw] max-w-none grid-rows-[1fr_auto] gap-2"
+                          className="grid grid-rows-[1fr_auto] gap-2"
                       >
                         <ContentBlocksPreview
                           blocks={contentBlocks}
@@ -553,6 +595,7 @@ export function Thread() {
                     </form>
                   </AudioRecorderProvider>
                   </div>
+                </div>
                 </div>
               }
             />
