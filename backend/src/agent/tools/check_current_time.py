@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 
 from typing import Annotated
@@ -6,6 +7,7 @@ from langchain_core.messages import ToolMessage
 from langchain_core.tools import InjectedToolCallId, tool
 from langgraph.types import Command
 
+logger = logging.getLogger(__name__)
 
 @tool
 def check_current_time(
@@ -22,8 +24,8 @@ def check_current_time(
     content = f"Current time is: {current_time}"
     
     tool_message = ToolMessage(content, tool_call_id=tool_call_id)
-    
+    logger.info("Tool: check_current_time.")
     return Command(update={
         "messages": [tool_message],
         "tools_used": ["check_current_time"]
-    })
+    }, goto="LLM_assistant")

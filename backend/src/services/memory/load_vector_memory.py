@@ -11,17 +11,17 @@ if __name__ == "__main__":
 
     if MODE == "LOAD":
         # Initialize Vector Memory Store
-        vector_store = ChromaVectorMemoryStore(collection_name="DORI_memories", reset_on_init=True)
+        vector_store = ChromaVectorMemoryStore(collection_name="agent_memories", reset_on_init=True)
 
         # Step 1: Save (store)
         # =====================
 
         documents = [
         {"content": "The name 'DORI' is inspired by the Nemo character Dory, who is known for her short-term memory loss. This is an internal joke and a reminder that DORI is designed to help users with their short-term memories. The idea was originally proposed by Javier Carrera, who is the coworker of the authors of this project.",
-        "metadata": {"tags": "DORI_history", 
+        "metadata": {"tags": "agent_history", 
                     "importance": "4"}},
-        {"content": "The authors of this project, and creators of DORI, are Guillermo Escolano (Industrial Engineer) and Iria Cardiel (Physicist). They both work as AI Software Developers in the world of LLMs and AI Agents. This is their first project together.",
-        "metadata": {"tags": "DORI_history", 
+        {"content": "The authors of this project, and creators of the agent, are Guillermo Escolano (Industrial Engineer) and Iria Cardiel (Physicist). They both work as AI Software Developers in the world of LLMs and AI Agents. This is their first project together.",
+        "metadata": {"tags": "agent_history", 
                         "importance": "5"}},
         {"content": "Iria was born in 1998 in Alcorcon, Spain. She is has experience in AI in consulting firms.",
         "metadata": {"tags": "user_history",
@@ -84,7 +84,7 @@ if __name__ == "__main__":
         
     elif MODE == "READ":
         # Initialize Vector Memory Store
-        vector_store = ChromaVectorMemoryStore(collection_name="DORI_memories", reset_on_init=False)
+        vector_store = ChromaVectorMemoryStore(collection_name="agent_memories", reset_on_init=False)
         
         # List all collections
         cprint("Collections...", "yellow")

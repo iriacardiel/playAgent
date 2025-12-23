@@ -1,6 +1,7 @@
 import logging
 import re
 import sqlite3
+import json
 
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import (
@@ -21,7 +22,11 @@ from agent.tools import (
     get_list_of_tasks,
     add_task,
     check_current_time,
+    add_symptom,
+    get_list_of_symptoms,
     get_social_data,
+    get_diagnosis,
+    get_treatment,
     save_short_term_memory,
     retrieve_long_term_memory,
     save_long_term_memory,
@@ -37,7 +42,6 @@ logger.setLevel(logging.DEBUG)
 # --------------------------
 # LLM
 # --------------------------
-LOG_METRICS = bool(int(Settings.LOG_METRICS))
 ENABLE_JUDGE = bool(int(Settings.ENABLE_JUDGE))
 
 
@@ -90,7 +94,10 @@ tools = [
     get_list_of_tasks,
     add_task,
     check_current_time,
-    get_social_data
+    add_symptom,
+    get_list_of_symptoms,
+    get_diagnosis,
+    get_treatment,
 ]
 
 memory_tools = [
@@ -228,9 +235,9 @@ class Agent:
         messages_list = state["messages"]
 
         # Build LLM input with the system prompt and the last messages
-        short_term_memories = state.get("short_term_memories", [])
+        short_term_memories = state.get("short_term_memories", []) # short_term_memories is a list of dicts
         llm_input = [
-            SystemMessage(content=SYSTEM_PROMPT.format(short_term_memories_str=str("Empty" if not short_term_memories else "\n" + "\n".join(f"- {mem}" for mem in short_term_memories)))),
+            SystemMessage(content=SYSTEM_PROMPT.format(short_term_memories_str=str("Empty" if not short_term_memories else "\n" + "\n".join(f"- {json.dumps(mem)}" for mem in short_term_memories)))),
         ] + messages_list
 
         if ENABLE_JUDGE:

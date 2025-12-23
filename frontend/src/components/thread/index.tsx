@@ -38,8 +38,6 @@ import ThreadHistory from "./history";
 import { AssistantMessage, AssistantMessageLoading } from "./messages/ai";
 import { HumanMessage } from "./messages/human";
 import { TooltipIconButton } from "./tooltip-icon-button";
-import { MapPanel } from "@/components/ui/map-panel";
-import { Map, Maximize2, Minimize2 } from "lucide-react";
 
 
 function StickyToBottomContent(props: {
@@ -83,7 +81,36 @@ function ScrollToBottom(props: { className?: string }) {
   );
 }
 
+// Suggested messages component
+function SuggestedMessages({ onSelect, isLoading }: { onSelect: (message: string) => void; isLoading: boolean }) {
+  const suggestions = [
+    "What can you help me with?",
+    "Explain the diagnosis.",
+    "Explain the treatment.",
+    "I have a new symptom.",
+    "List saved symptoms.",
+    "I have a new task",
+    "List tasks."
+  ];
 
+  return (
+    <div className="flex flex-wrap gap-2 mb-3">
+      {suggestions.map((suggestion, index) => (
+        <button
+          key={index}
+          onClick={() => onSelect(suggestion)}
+          disabled={isLoading}
+          className={cn(
+            "px-4 py-2 text-sm rounded-lg border border-border bg-background hover:bg-muted transition-colors",
+            "disabled:opacity-50 disabled:cursor-not-allowed"
+          )}
+        >
+          {suggestion}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 export function Thread() {
   const [artifactContext, setArtifactContext] = useArtifactContext();
@@ -94,10 +121,7 @@ export function Thread() {
     "chatHistoryOpen",
     parseAsBoolean.withDefault(false),
   );
-  const [mapOpen, setMapOpen] = useQueryState(
-    "mapOpen",
-    parseAsBoolean.withDefault(false),
-  );
+
   const [hideToolCalls, setHideToolCalls] = useQueryState(
     "hideToolCalls",
     parseAsBoolean.withDefault(false),
@@ -213,6 +237,16 @@ export function Thread() {
     setContentBlocks([]);
   };
 
+
+  const handleSuggestionSelect = (suggestion: string) => {
+    setInput(suggestion);
+    // Optionally, auto-submit the suggestion
+    setTimeout(() => {
+      const formElement = document.querySelector('form');
+      formElement?.requestSubmit();
+    }, 0);
+  };
+
   const handleRegenerate = (
     parentCheckpoint: Checkpoint | null | undefined,
   ) => {
@@ -306,7 +340,7 @@ export function Thread() {
                 )}
               </div>
               
-              {/*Theme, NewThread and Map Buttons*/}
+              {/*Theme, NewThread Buttons*/}
               <div className="flex items-center gap-4">
                 <ThemeToggle />             
                 
@@ -318,16 +352,6 @@ export function Thread() {
                   onClick={() => setThreadId(null)}
                 >
                   <SquarePen className="size-5" />
-                </TooltipIconButton>
-
-                <TooltipIconButton
-                  size="lg"
-                  className="p-4"
-                  tooltip="Toggle Map"
-                  variant="ghost"
-                  onClick={() => setMapOpen((p) => !p)}
-                >
-                  <Map className="h-5 w-5" />
                 </TooltipIconButton>
 
               </div>
@@ -364,8 +388,8 @@ export function Thread() {
                   }}
                 >
                   <img
-                    src="/DORI_logo2.svg"
-                    alt="DORI Logo"
+                    src="/CORA_logo2.svg"
+                    alt="CORA Logo"
                     className="h-8 w-auto object-contain"
                   />
                 </motion.button>
@@ -436,7 +460,7 @@ export function Thread() {
                   {!chatStarted && (
                     <div className="flex items-center gap-3">
                       <img
-                        src="/DORI_logo.svg"
+                        src="/CORA_logo.svg"
                         alt="DORI Logo"
                         className="h-80 w-auto"
                       />
@@ -444,7 +468,14 @@ export function Thread() {
                   )}
 
                   <ScrollToBottom className="animate-in fade-in-0 zoom-in-95 absolute bottom-full left-1/2 mb-4 -translate-x-1/2" />
-
+                  <div className="mx-auto w-[60vw] max-w-none">
+                    {/* Suggested messages - only show when chat hasn't started */}
+                    {
+                      <SuggestedMessages 
+                        onSelect={handleSuggestionSelect}
+                        isLoading={isLoading}
+                      />
+                    }
                   <div
                     ref={dropRef}
                     className={cn(
@@ -457,7 +488,7 @@ export function Thread() {
                     <AudioRecorderProvider onTranscriptionReceived={handleTranscriptionReceived}>
                       <form
                         onSubmit={handleSubmit}
-                        className="mx-auto grid w-[60vw] max-w-none grid-rows-[1fr_auto] gap-2"
+                          className="grid grid-rows-[1fr_auto] gap-2"
                       >
                         <ContentBlocksPreview
                           blocks={contentBlocks}
@@ -554,6 +585,7 @@ export function Thread() {
                   </AudioRecorderProvider>
                   </div>
                 </div>
+                </div>
               }
             />
           </StickToBottom>
@@ -573,33 +605,6 @@ export function Thread() {
           </div>
         </div>
       </div>
-      
-    {/* RIGHT SIDE - Map Panel */}
-      <motion.div
-        className="relative border-l bg-background overflow-hidden"
-        animate={{
-          width: mapOpen ? 1000 : 0,
-        }}
-        initial={{ width: 0 }}
-        transition={
-          isLargeScreen
-            ? { type: "spring", stiffness: 300, damping: 30 }
-            : { duration: 0 }
-        }
-      >
-        <div className="relative h-full flex flex-col" style={{ width: 1000 }}>
-          
-          {/* Map iframe */}
-          <div className="flex-1 relative">
-            <iframe
-              src={`/leaflet_map_template.html?backend=${encodeURIComponent(backend)}`}
-              className="absolute inset-0 w-full h-full border-0"
-              title="Map Panel"
-            />
-          </div>
-        </div>
-      </motion.div>
-    
     </div>
   );
 }

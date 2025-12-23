@@ -2,8 +2,6 @@
 
 This repository is designed to develop an AI Agent, with short and long-term memory capabilities, tool usage, and a user-friendly interface. 
 
-You can call it DORI!
-
 This repository is an ongoing work in progress.
 
 **Check the Repo wiki for more information: [playAgent Wiki](https://github.com/iriacardiel/playAgent/wiki)**
@@ -87,7 +85,7 @@ make dev-backend # to run backend only
 make dev-frontend # to run frontend only
 ```
 
-Run the following scripts to load data into Neo4j Knowledge Graph and make the nodes move in the map:
+Run the following scripts to load data into Neo4j Knowledge Graph:
 
 ```bash
 python backend/src/services/neo4j/load_friends.py

@@ -13,10 +13,10 @@ import "./globals.css";
 // });
 
 export const metadata: Metadata = {
-  title: "DORI - AI Agent Sandbox",
+  title: "CORA Care - Cognitive Resource for Chornic Care",
   description: "AI-powered assistant",
   icons: {
-    icon: "/DORI_logo.svg",
+    icon: "/CORA_logo.svg",
   },
 };
 

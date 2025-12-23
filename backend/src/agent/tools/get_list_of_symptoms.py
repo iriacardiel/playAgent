@@ -10,29 +10,29 @@ from langgraph.types import Command
 logger = logging.getLogger(__name__)
 
 @tool
-def get_list_of_tasks(
+def get_list_of_symptoms(
     tool_call_id: Annotated[str, InjectedToolCallId],
-    tasks: Annotated[List, InjectedState("tasks")],
+    symptoms: Annotated[List, InjectedState("symptoms")],
 
 ) -> Command:
     """
-    Get the list of tasks from the state and present them to the user.
-    If list is, empty, inform the user that there are no tasks yet.
+    Get the list of symptoms from the state and present them to the user.
+    If list is, empty, inform the user that there are no symptoms yet.
     """
-    if tasks is None or len(tasks) == 0:
-        content = "There are no tasks yet."
+    if symptoms is None or len(symptoms) == 0:
+        content = "There are no symptoms yet."
     else:
         content = (
-            "Tasks:\n"
-            "\n".join(f"- {task}" for task in tasks if task is not None)
+            "symptoms:\n"
+            "\n".join(f"- {symptom}" for symptom in symptoms if symptom is not None)
         )
     
     tool_message = ToolMessage(content, tool_call_id=tool_call_id)
 
     update = {
         "messages": [tool_message],
-        "tools_used": ["get_list_of_tasks"],
+        "tools_used": ["get_list_of_symptoms"],
     }
-    logger.info("Tool: get_list_of_tasks.")
+    logger.info("Tool: get_list_of_symptoms.")
 
     return Command(update=update, goto="LLM_assistant")

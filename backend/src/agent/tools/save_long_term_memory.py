@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 import json
 import traceback
@@ -17,6 +18,7 @@ from services.neo4j import Neo4jService
 from services.memory.chromadb_store import ChromaVectorMemoryStore
 from agent.state import AgentState
 
+logger = logging.getLogger(__name__)
 
 @tool
 def save_long_term_memory(
@@ -55,7 +57,8 @@ def save_long_term_memory(
 
     """
     try:
-        vector_store = ChromaVectorMemoryStore(collection_name="DORI_memories", reset_on_init=False)
+        logger.info("Tool: save_long_term_memory")
+        vector_store = ChromaVectorMemoryStore(collection_name="agent_memories", reset_on_init=False)
         
         metadata = {
             "tags": tag,
@@ -84,4 +87,4 @@ def save_long_term_memory(
         return Command(update={
             "messages": [tool_message],
             "tools_used": ["save_long_term_memory"]
-        })
+        }, goto="LLM_assistant")
