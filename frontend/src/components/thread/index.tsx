@@ -388,8 +388,8 @@ export function Thread() {
                   }}
                 >
                   <img
-                    src="/DORI_logo2.svg"
-                    alt="DORI Logo"
+                    src="/CORA_logo2.svg"
+                    alt="CORA Logo"
                     className="h-8 w-auto object-contain"
                   />
                 </motion.button>
@@ -460,7 +460,7 @@ export function Thread() {
                   {!chatStarted && (
                     <div className="flex items-center gap-3">
                       <img
-                        src="/DORI_logo.svg"
+                        src="/CORA_logo.svg"
                         alt="DORI Logo"
                         className="h-80 w-auto"
                       />

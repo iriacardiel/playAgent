@@ -33,7 +33,7 @@ def retrieve_long_term_memory(
     try:
         logger.info("Tool: retrieve_long_term_memory.")
         # Perform actual vector store retrieval
-        vector_store = ChromaVectorMemoryStore(collection_name="DORI_memories", reset_on_init=False)
+        vector_store = ChromaVectorMemoryStore(collection_name="agent_memories", reset_on_init=False)
         
         results = vector_store.retrieve(
             query=query,
@@ -73,4 +73,4 @@ def retrieve_long_term_memory(
             "messages": [tool_message],
             "long_term_memories": [],
             "tools_used": ["retrieve_long_term_memory"]
-        })
+        }, goto="LLM_assistant")

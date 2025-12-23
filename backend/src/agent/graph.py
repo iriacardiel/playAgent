@@ -239,7 +239,7 @@ class Agent:
         llm_input = [
             SystemMessage(content=SYSTEM_PROMPT.format(short_term_memories_str=str("Empty" if not short_term_memories else "\n" + "\n".join(f"- {json.dumps(mem)}" for mem in short_term_memories)))),
         ] + messages_list
-        print(llm_input)
+
         if ENABLE_JUDGE:
             # Invoke the LLM with tools in background thread so that the response is not printed until the judge approves it
             ai_message = self.llm_with_tools.invoke(

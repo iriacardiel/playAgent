@@ -28,4 +28,4 @@ def check_current_time(
     return Command(update={
         "messages": [tool_message],
         "tools_used": ["check_current_time"]
-    })
+    }, goto="LLM_assistant")

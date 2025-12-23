@@ -33,4 +33,4 @@ def add_task(new_task:str,
     }
 
     logger.info(f"Tool: add_task. {content}")
-    return Command(update=update)
+    return Command(update=update, goto="LLM_assistant")

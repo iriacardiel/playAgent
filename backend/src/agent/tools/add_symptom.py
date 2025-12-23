@@ -33,4 +33,4 @@ def add_symptom(new_symptom:str,
     }
 
     logger.info(f"Tool: add_symptom. {content}")
-    return Command(update=update)
+    return Command(update=update, goto="LLM_assistant")

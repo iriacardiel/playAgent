@@ -56,4 +56,4 @@ def get_treatment(
     }
     logger.info("Tool: get_treatment.")
 
-    return Command(update=update)
+    return Command(update=update, goto="LLM_assistant")

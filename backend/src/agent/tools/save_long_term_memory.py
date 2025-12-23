@@ -58,7 +58,7 @@ def save_long_term_memory(
     """
     try:
         logger.info("Tool: save_long_term_memory")
-        vector_store = ChromaVectorMemoryStore(collection_name="DORI_memories", reset_on_init=False)
+        vector_store = ChromaVectorMemoryStore(collection_name="agent_memories", reset_on_init=False)
         
         metadata = {
             "tags": tag,
@@ -87,4 +87,4 @@ def save_long_term_memory(
         return Command(update={
             "messages": [tool_message],
             "tools_used": ["save_long_term_memory"]
-        })
+        }, goto="LLM_assistant")

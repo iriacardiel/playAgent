@@ -24,7 +24,7 @@ def save_short_term_memory(
     Args:
         new_short_term_memory (str): The new memory to be saved. Keep it short and concise.
         keep_boolean (str): "True" or "False" whether or not to keep the memory in the Short Term Memories section for forever. Only the user name should be kept forever.
-        tag: (str): The tag for the memory, e.g., "user_info", "DORI_info", "user_preferences" or "animals". You can combine them like: "user_info,user_preferences".
+        tag: (str): The tag for the memory, e.g., "user_info", "agent_info", "user_preferences" or "animals". You can combine them like: "user_info,user_preferences".
 
     Call this tool autonomously, when you want to save new memory into the Short Term or Core Memories section. The user will not explicitly ask you to do this.
     Extract only relevant information from user messages and save it as a short term memory.
@@ -93,4 +93,4 @@ def save_short_term_memory(
         "messages": [tool_message],
         "short_term_memories": final_short_term_memories,
         "tools_used": ["save_short_term_memory"]
-    })
+    }, goto="LLM_assistant")

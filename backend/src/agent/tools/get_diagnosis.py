@@ -15,7 +15,7 @@ def get_diagnosis(
     tool_call_id: Annotated[str, InjectedToolCallId],
 ) -> Command:
     """
-    Get a synthetic diagnosis summary for the user
+    Get a the diagnosis summary for the user
     """
     fake_diagnosis = {
         "diagnosis_name": "Neuroadaptive Fatigue Syndrome (NFS)",
@@ -42,4 +42,4 @@ def get_diagnosis(
     }
     logger.info("Tool: get_diagnosis_summary.")
 
-    return Command(update=update)
+    return Command(update=update, goto="LLM_assistant")

@@ -35,4 +35,4 @@ def get_list_of_tasks(
     }
     logger.info("Tool: get_list_of_tasks.")
 
-    return Command(update=update)
+    return Command(update=update, goto="LLM_assistant")
